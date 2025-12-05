@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "717667405648",
+    "project_id": "qlinic-bf3d6",
+    "storage_bucket": "qlinic-bf3d6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:717667405648:android:4deba915daee519644a655",
+        "android_client_info": {
+          "package_name": "com.example.qlinic"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBcfcHZMsdhQWs-iOHstBLlJLaCFOx42SE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
