@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.qlinic" />
+                  <option name="mobileSdkAppId" value="1:717667405648:android:4deba915daee519644a655" />
+                  <option name="projectId" value="qlinic-bf3d6" />
+                  <option name="projectNumber" value="717667405648" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
