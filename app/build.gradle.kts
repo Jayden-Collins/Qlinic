@@ -45,9 +45,6 @@ dependencies {
     // KEEP THIS line to manage all Firebase versions
     implementation(platform(libs.firebase.bom)) // Check for latest stable BoM version
 
-    implementation("com.google.firebase:firebase-auth-ktx:23.2.1")
-    implementation("com.google.firebase:firebase-firestore-ktx:25.0.0")
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
