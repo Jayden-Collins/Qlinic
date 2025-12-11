@@ -36,7 +36,7 @@ class ReportViewModel : ViewModel() {
     private val _peakHoursReportData = MutableStateFlow(PeakHoursReportData())
     val peakHoursReportData: StateFlow<PeakHoursReportData> = _peakHoursReportData.asStateFlow()
 
-    private val userId: String? = "cp50kt2wZWW2TdDmYFCu"
+    private val userId: String = "cp50kt2wZWW2TdDmYFCu"
     // private val userId: String? = Firebase.auth.currentUser?.uid
 
 
