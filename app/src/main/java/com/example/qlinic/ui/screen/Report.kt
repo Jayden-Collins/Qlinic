@@ -403,21 +403,43 @@ fun BarChartWithAxis(
         // Main Chart Area (Bars and X-Axis)
         Column(modifier = Modifier.weight(1f)) {
             // Bars
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f), // Bars take up most of the space
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.Bottom
+                    .weight(1f), // The container for the bars takes up the main space
+                contentAlignment = Alignment.BottomStart // Align bars to the bottom
             ) {
-                data.forEach { chartData ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 4.dp) // Space between bars
-                            .fillMaxHeight(if (maxValue > 0) chartData.value / maxValue else 0f)
-                            .background(chartData.color)
-                    )
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    data.forEach { chartData ->
+                        // Use a Box to stack the Text on top of the bar
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            // The Bar itself (the colored rectangle)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.6f) // Control bar width
+                                    .fillMaxHeight(if (maxValue > 0) chartData.value / maxValue else 0f)
+                                    .background(chartData.color)
+                            )
+
+                            // The Text label showing the value
+                            Text(
+                                text = chartData.value.toInt().toString(), // Display the integer value
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    // Make text white for tall, dark bars so it's readable
+                                    color = if (chartData.value / maxValue > 0.8f) Color.White else Color.Black,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                        }
+                    }
                 }
             }
             // Divider for the X-Axis line
