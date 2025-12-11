@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Qlinic</string>
+    <string name="home">Upcoming Appointment</string>
+    <string name="schedule">Doctor Schedules</string>
+    <string name="report">Report</string>
+    <string name="profile">Profile</string>
 </resources>
