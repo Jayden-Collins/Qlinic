@@ -28,18 +28,18 @@ class AppointmentRepository {
     // Simulate a network call to get peak hours data
     /**
     suspend fun getPeakHoursInfo(type: String, department: String): PeakHoursInfo {
-        delay(600) // Simulate slightly different network latency
+    delay(600) // Simulate slightly different network latency
 
-        // Return different hard-coded data based on the filter type
-        return when (type) {
-            "Weekly" -> PeakHoursInfo(busiestDay = "Wednesday", busiestTime = "10 AM - 11 AM")
-            "Monthly" -> PeakHoursInfo(busiestDay = "Friday", busiestTime = "2 PM - 3 PM")
-            "Yearly" -> PeakHoursInfo(busiestDay = "Tuesday", busiestTime = "9 AM - 10 AM")
-            "Custom Date Range" -> PeakHoursInfo(busiestDay = "Monday", busiestTime = "3 PM - 4 PM")
-            else -> PeakHoursInfo()
-        }
+    // Return different hard-coded data based on the filter type
+    return when (type) {
+    "Weekly" -> PeakHoursInfo(busiestDay = "Wednesday", busiestTime = "10 AM - 11 AM")
+    "Monthly" -> PeakHoursInfo(busiestDay = "Friday", busiestTime = "2 PM - 3 PM")
+    "Yearly" -> PeakHoursInfo(busiestDay = "Tuesday", busiestTime = "9 AM - 10 AM")
+    "Custom Date Range" -> PeakHoursInfo(busiestDay = "Monday", busiestTime = "3 PM - 4 PM")
+    else -> PeakHoursInfo()
     }
-    **/
+    }
+     **/
 
     suspend fun getPeakHoursReportData(type: String, department: String): PeakHoursReportData {
         delay(600) // Simulate network latency
