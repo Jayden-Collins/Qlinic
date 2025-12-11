@@ -45,9 +45,6 @@ dependencies {
     // KEEP THIS line to manage all Firebase versions
     implementation(platform(libs.firebase.bom)) // Check for latest stable BoM version
 
-    // Core Firebase library (Required for KTX extensions like 'Firebase.auth')
-    implementation("com.google.firebase:firebase-ktx")
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -57,8 +54,6 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.google.firebase.auth.ktx)
-    implementation(libs.google.firebase.firestore.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
