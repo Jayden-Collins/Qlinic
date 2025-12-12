@@ -21,10 +21,10 @@ data class BottomNavItem(
 )
 
 val navigationItems = listOf(
-    BottomNavItem(Screen.Home.route, R.drawable.ic_home, "Home"),
-    BottomNavItem(Screen.Schedule.route, R.drawable.ic_schedule, "Schedule"),
-    BottomNavItem(Screen.Report.route, R.drawable.ic_report,"Report"),
-    BottomNavItem(Screen.Profile.route, R.drawable.ic_profile, "Profile")
+    BottomNavItem(Routes.Home.route, R.drawable.ic_home, "Home"),
+    BottomNavItem(Routes.Schedule.route, R.drawable.ic_schedule, "Schedule"),
+    BottomNavItem(Routes.Report.route, R.drawable.ic_report,"Report"),
+    BottomNavItem(Routes.Profile.route, R.drawable.ic_profile, "Profile")
 )
 
 @Composable
@@ -36,10 +36,10 @@ fun BottomNavBar(
     onNavigateToProfile: () -> Unit
 ) {
     val navigationActions = mapOf(
-        Screen.Home.route to onNavigateHome,
-        Screen.Schedule.route to onNavigateToSchedule,
-        Screen.Report.route to onNavigateToReport,
-        Screen.Profile.route to onNavigateToProfile
+        Routes.Home.route to onNavigateHome,
+        Routes.Schedule.route to onNavigateToSchedule,
+        Routes.Report.route to onNavigateToReport,
+        Routes.Profile.route to onNavigateToProfile
     )
 
     MaterialTheme.colorScheme.primary
