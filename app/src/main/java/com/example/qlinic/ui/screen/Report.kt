@@ -16,8 +16,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -65,11 +68,13 @@ fun ReportScreen(
     viewModel: ReportViewModel = viewModel(),
     onNavigateHome: () -> Unit
 ) {
+    val isLoading by viewModel.isLoading.collectAsState()
     val filterState by viewModel.filterState.collectAsState()
     val stats by viewModel.stats.collectAsState()
     val peakHoursReportData by viewModel.peakHoursReportData.collectAsState()
 
     ReportContent(
+        isLoading = isLoading,
         filterState = filterState,
         stats = stats,
         peakHoursReportData = peakHoursReportData,
@@ -94,6 +99,7 @@ fun ReportScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportContent(
+    isLoading: Boolean,
     filterState: ReportFilterState,
     stats: AppointmentStatistics,
     peakHoursReportData: PeakHoursReportData,
@@ -195,100 +201,116 @@ fun ReportContent(
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            Column(modifier = Modifier.padding(16.dp)) {
-                // Header
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Appointments Summary", style = MaterialTheme.typography.displayMedium)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_info),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Filters
-                FilterDropdown(
-                    "Types",
-                    listOf("Weekly", "Monthly", "Yearly", "Custom Date Range"),
-                    filterState.selectedType
+            if (isLoading) {
+                // If loading, show a centered progress circle
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    onFilterTypeChange(it)
+                    CircularProgressIndicator()
                 }
-
-                AnimatedVisibility(visible = filterState.isCustomRangeVisible) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp), horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        DateInput(
-                            "Start",
-                            filterState.startDate,
-                            Modifier.weight(1f)
-                        ) { isStartDatePicker = true; showDatePicker = true }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        DateInput(
-                            "End",
-                            filterState.endDate,
-                            Modifier.weight(1f)
-                        ) { isStartDatePicker = false; showDatePicker = true }
+            } else {
+                // If not loading, show the main report content
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .verticalScroll(rememberScrollState()) // Make content scrollable
+                ) {
+                    // Header
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Appointments Summary", style = MaterialTheme.typography.displayMedium)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_info),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                FilterDropdown(
-                    "Department",
-                    listOf(
-                        "All Department",
-                        "Cardiology",
-                        "Dermatology",
-                        "Gastroenterology",
-                        "Gynecologist",
-                        "Neurology",
-                        "Orthopedics"
-                    ),
-                    filterState.selectedDepartment
-                ) {
-                    onDepartmentChange(it)
-                }
-                Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                // Stats
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    StatItem(
-                        "Total",
-                        stats.total,
-                        pillColor = MaterialTheme.colorScheme.primary,
-                        onPillColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                    StatItem(
-                        "Completed",
-                        stats.completed,
-                        stats.completedPercent,
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.onPrimary,
-                        MaterialTheme.colorScheme.primaryContainer,
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    StatItem(
-                        "Cancelled",
-                        stats.cancelled,
-                        stats.cancelledPercent,
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.onPrimary,
-                        MaterialTheme.colorScheme.errorContainer,
-                        MaterialTheme.colorScheme.onErrorContainer
-                    )
+                    // Filters
+                    FilterDropdown(
+                        "Types",
+                        listOf("Weekly", "Monthly", "Yearly", "Custom Date Range"),
+                        filterState.selectedType
+                    ) {
+                        onFilterTypeChange(it)
+                    }
+
+                    AnimatedVisibility(visible = filterState.isCustomRangeVisible) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            DateInput(
+                                "Start",
+                                filterState.startDate,
+                                Modifier.weight(1f)
+                            ) { isStartDatePicker = true; showDatePicker = true }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            DateInput(
+                                "End",
+                                filterState.endDate,
+                                Modifier.weight(1f)
+                            ) { isStartDatePicker = false; showDatePicker = true }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FilterDropdown(
+                        "Department",
+                        listOf(
+                            "All Department",
+                            "Cardiology",
+                            "Dermatology",
+                            "Gastroenterology",
+                            "Gynecologist",
+                            "Neurology",
+                            "Orthopedics"
+                        ),
+                        filterState.selectedDepartment
+                    ) {
+                        onDepartmentChange(it)
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Stats
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        StatItem(
+                            "Total",
+                            stats.total,
+                            pillColor = MaterialTheme.colorScheme.primary,
+                            onPillColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                        StatItem(
+                            "Completed",
+                            stats.completed,
+                            stats.completedPercent,
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.onPrimary,
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        StatItem(
+                            "Cancelled",
+                            stats.cancelled,
+                            stats.cancelledPercent,
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.onPrimary,
+                            MaterialTheme.colorScheme.errorContainer,
+                            MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    PeakHoursReport(reportData = peakHoursReportData)
                 }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                PeakHoursReport(reportData = peakHoursReportData)
             }
         }
     }
@@ -482,26 +504,42 @@ fun BarChart(
         verticalAlignment = Alignment.Bottom // Align bars to the bottom
     ) {
         data.forEach { chartData ->
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Bottom,
-                modifier = Modifier.weight(1f)
+            // Use a Box to stack the value label on top of the bar and day label
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.BottomCenter
             ) {
-                // The Bar itself
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.6f) // Bar width
-                        .fillMaxHeight(if (maxValue > 0) chartData.value / maxValue else 0f) // Bar height relative to max value
-                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-                        .background(chartData.color)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                // The Label below the bar
-                Text(
-                    text = chartData.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    maxLines = 1
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom
+                ) {
+                    // --- NEW: The value label on top of the bar ---
+                    Text(
+                        text = chartData.value.toInt().toString(),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // The Bar itself
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.5f) // Slightly narrower bar
+                            .height(100.dp) // Give bars a consistent max height area
+                            .fillMaxHeight(if (maxValue > 0) chartData.value / maxValue else 0f)
+                            .background(
+                                chartData.color,
+                                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+                            )
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // The Label below the bar
+                    Text(
+                        text = chartData.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }
@@ -513,6 +551,7 @@ fun BarChart(
 fun PreviewReportScreen() {
     QlinicTheme {
         ReportContent(
+            isLoading = false,
             filterState = ReportFilterState(), // Default state
             stats = AppointmentStatistics(50, 48, 2), // Dummy data
             peakHoursReportData = PeakHoursReportData(
@@ -540,6 +579,7 @@ fun PreviewReportScreen() {
 fun PreviewReportScreenCustomRange() {
     QlinicTheme {
         ReportContent(
+            isLoading = false,
             filterState = ReportFilterState(
                 selectedType = "Custom Date Range",
                 isCustomRangeVisible = true
@@ -567,6 +607,7 @@ fun PreviewReportScreenCustomRange() {
 fun PreviewReportContent() {
     QlinicTheme {
         ReportContent(
+            isLoading = false,
             filterState = ReportFilterState(),
             stats = AppointmentStatistics(50, 48, 2),
             // Provide sample chart data for the preview
@@ -582,6 +623,23 @@ fun PreviewReportContent() {
                 busiestDay = "Wednesday",
                 busiestTime = "10 AM - 11 AM"
             ),
+            onFilterTypeChange = {},
+            onDepartmentChange = {},
+            onDateChange = { _, _ -> },
+            onNavigateHome = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Report Screen Loading")
+@Composable
+fun PreviewReportContentLoading() {
+    QlinicTheme {
+        ReportContent(
+            isLoading = true, // Preview in loading state
+            filterState = ReportFilterState(),
+            stats = AppointmentStatistics(),
+            peakHoursReportData = PeakHoursReportData(),
             onFilterTypeChange = {},
             onDepartmentChange = {},
             onDateChange = { _, _ -> },

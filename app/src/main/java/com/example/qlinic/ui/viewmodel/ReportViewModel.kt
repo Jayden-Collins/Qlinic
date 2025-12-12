@@ -10,6 +10,7 @@ import com.example.qlinic.data.model.ReportDocument
 import com.example.qlinic.data.model.ReportFilterState
 import com.example.qlinic.data.repository.AppointmentRepository
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +22,9 @@ class ReportViewModel : ViewModel() {
 
     private val db = Firebase.firestore
     private val repository = AppointmentRepository()
+
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     // UI State for Filters
     private val _filterState = MutableStateFlow(ReportFilterState())
@@ -44,19 +48,19 @@ class ReportViewModel : ViewModel() {
         loadReportDocument()
     }
 
+
     fun updateFilter(newState: ReportFilterState) {
         _filterState.value = newState
-        saveFilters(newState) // Always save the user's latest filter choice
+        saveFilters(newState)
 
         if (newState.selectedType == "Custom Date Range") {
-            // For custom ranges, perform a live fetch from the repository.
             fetchDataForCustomRange(newState.startDate, newState.endDate)
         } else {
-            // For pre-defined types, just display the stats we already have.
-            loadPreCalculatedStats(newState.selectedType)
+            // When switching between Weekly/Monthly/Yearly, just reload the whole document.
+            // This is safe, fast, and ensures data consistency.
+            loadReportDocument()
         }
     }
-
 
     // Example logic to change date
     fun updateDate(isStart: Boolean, date: String) {
@@ -69,59 +73,36 @@ class ReportViewModel : ViewModel() {
         updateFilter(newFilterState)
     }
 
-    private fun fetchData() {
-        viewModelScope.launch {
-            val currentFilters = _filterState.value
-            // Fetch appointment stats
-            val statsResult = repository.getStatistics(
-                currentFilters.selectedType,
-                currentFilters.selectedDepartment,
-                currentFilters.startDate,
-                currentFilters.endDate
-            )
-            _stats.value = statsResult
-
-            val peakHoursResult = repository.getPeakHoursReportData(
-                currentFilters.selectedType,
-                currentFilters.selectedDepartment,
-                currentFilters.startDate,
-                currentFilters.endDate
-            )
-            _peakHoursReportData.value = peakHoursResult
-        }
-    }
-
-    private fun loadPreCalculatedStats(reportType: String) {
-        viewModelScope.launch {
-            try {
-                val snapshot = db.collection("report").document(userId!!).get().await()
-                val savedReport = snapshot.toObject(ReportDocument::class.java)
-                if (savedReport != null) {
-                    // Update the stats cards
-                    _stats.value = when (reportType) {
-                        "Weekly" -> savedReport.weeklyStats
-                        "Monthly" -> savedReport.monthlyStats
-                        "Yearly" -> savedReport.yearlyStats
-                        else -> AppointmentStatistics()
-                    }
-
-                    _peakHoursReportData.value = repository.getPeakHoursReportData(reportType, "All", "", "")
-                }
-            } catch (e: Exception) {
-                Log.e("Firestore", "Error switching to pre-calculated stats", e)
+    private fun loadPreCalculatedStats(reportType: String, savedReport: ReportDocument) {
+        when (reportType) {
+            "Weekly" -> {
+                _stats.value = savedReport.weeklyStats
+                _peakHoursReportData.value = savedReport.weeklyPeakHours
+            }
+            "Monthly" -> {
+                _stats.value = savedReport.monthlyStats
+                _peakHoursReportData.value = savedReport.monthlyPeakHours
+            }
+            "Yearly" -> {
+                _stats.value = savedReport.yearlyStats
+                _peakHoursReportData.value = savedReport.yearlyPeakHours
+            }
+            else -> {
+                _stats.value = AppointmentStatistics()
+                _peakHoursReportData.value = PeakHoursReportData()
             }
         }
     }
 
     private fun fetchDataForCustomRange(startDate: String, endDate: String) {
         viewModelScope.launch {
+            _isLoading.value = true
             val result = repository.getStatistics(
                 "Custom Date Range",
                 _filterState.value.selectedDepartment,
                 startDate,
                 endDate
             )
-            _stats.value = result
             // Note: We do not save custom range results to the main document.
             val chartResult = repository.getPeakHoursReportData(
                 "Custom Date Range",
@@ -129,35 +110,46 @@ class ReportViewModel : ViewModel() {
                 startDate,
                 endDate
             )
+            _stats.value = result
             _peakHoursReportData.value = chartResult
+            _isLoading.value = false // Hide loading
         }
     }
 
-    private fun fetchAndSaveAllReports() {
+    private fun fetchAndCreateInitialDocument() {
         viewModelScope.launch {
+            _isLoading.value = true
             try {
                 // Fetch all three sets of stats from the repository.
                 val weekly = repository.getStatistics("Weekly", "All", "", "")
                 val monthly = repository.getStatistics("Monthly", "All", "", "")
                 val yearly = repository.getStatistics("Yearly", "All", "", "")
+                val weeklyPeak = repository.getPeakHoursReportData("Weekly", "All", "", "")
+                val monthlyPeak = repository.getPeakHoursReportData("Monthly", "All", "", "")
+                val yearlyPeak = repository.getPeakHoursReportData("Yearly", "All", "", "")
 
                 // Create the complete document with all the fetched data.
-                val fullReport = ReportDocument(
-                    filters = _filterState.value,
+                val initialReport = ReportDocument(
+                    filters = ReportFilterState(),
                     weeklyStats = weekly,
                     monthlyStats = monthly,
-                    yearlyStats = yearly
+                    yearlyStats = yearly,
+                    weeklyPeakHours = weeklyPeak,
+                    monthlyPeakHours = monthlyPeak,
+                    yearlyPeakHours = yearlyPeak
                 )
 
-                // Save the entire document to Firestore. This is the main "write" operation.
-                saveReportDocument(fullReport)
+                // Use .set() only once to create the document.
+                userId?.let { db.collection("report").document(it).set(initialReport).await() }
 
-                // Update the UI with the currently selected stats after fetching.
-                loadReportDocument()
+                _filterState.value = initialReport.filters
+                _stats.value = initialReport.weeklyStats // Default to weekly
+                _peakHoursReportData.value = initialReport.weeklyPeakHours
 
             } catch (e: Exception) {
-                Log.e("Firestore", "Error fetching and saving all reports", e)
+                Log.e("Firestore", "Error creating initial document", e)
             }
+            _isLoading.value = false // Hide loading
         }
     }
 
@@ -165,7 +157,7 @@ class ReportViewModel : ViewModel() {
         userId?.let { id ->
             viewModelScope.launch {
                 try {
-                    db.collection("report").document(id).set(report).await()
+                    db.collection("report").document(id).set(report, SetOptions.merge()).await()
                     Log.d("Firestore", "Full report document for user $id saved successfully.")
                 } catch (e: Exception) {
                     Log.e("Firestore", "Error saving full report for user $id", e)
@@ -179,7 +171,6 @@ class ReportViewModel : ViewModel() {
             viewModelScope.launch {
                 try {
                     db.collection("report").document(id).update("filters", filterToSave).await()
-                    Log.d("Firestore", "Filters for user $id updated successfully.")
                 } catch (e: Exception) {
                     Log.e("Firestore", "Error updating filters for user $id", e)
                 }
@@ -188,27 +179,35 @@ class ReportViewModel : ViewModel() {
     }
 
     private fun loadReportDocument() {
-        userId?.let { id ->
-            viewModelScope.launch {
+        viewModelScope.launch {
+            _isLoading.value = true // Start loading
+            userId?.let { id ->
                 try {
                     val snapshot = db.collection("report").document(id).get().await()
-                    val savedReport = snapshot.toObject(ReportDocument::class.java)
 
-                    if (savedReport != null) {
-                        _filterState.value = savedReport.filters
-                        loadPreCalculatedStats(savedReport.filters.selectedType)
-                        Log.d("Firestore", "Successfully loaded full report for user $id.")
+                    if (snapshot.exists()) {
+                        val savedReport = snapshot.toObject(ReportDocument::class.java)
+                        if (savedReport != null) {
+                            Log.d("Firestore", "Successfully loaded full report for user $id.")
+                            _filterState.value = savedReport.filters
+                            // After loading, immediately display the correct stats for the loaded filter type
+                            loadPreCalculatedStats(savedReport.filters.selectedType, savedReport)
+                        }
                     } else {
-                        Log.d("Firestore", "No saved report found. Fetching initial data.")
-                        fetchAndSaveAllReports() // If no document, fetch and save everything.
+                        // Document does NOT exist, so create it for the first time.
+                        Log.d("Firestore", "No saved report found. Creating initial document.")
+                        fetchAndCreateInitialDocument()
+                        return@launch // Stop here so isLoading is handled by the other function
                     }
                 } catch (e: Exception) {
                     Log.e("Firestore", "Error loading report for user $id", e)
-                    fetchAndSaveAllReports() // Also fetch if there's an error.
+                    // It's safer to not create a new doc on a temporary network error.
+                    // Just show empty state.
                 }
+            } ?: run {
+                Log.d("Firestore", "No user ID. Cannot load or save.")
             }
-        } ?: run {
-            Log.d("Firestore", "No user ID. Cannot load or save.")
+            _isLoading.value = false // Stop loading once data is processed
         }
     }
 }
