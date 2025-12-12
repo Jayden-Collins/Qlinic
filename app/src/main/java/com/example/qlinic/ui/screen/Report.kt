@@ -1,34 +1,26 @@
 package com.example.qlinic.ui.screen
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.qlinic.R
 import com.example.qlinic.data.model.AppointmentStatistics
@@ -62,14 +53,15 @@ import java.util.Locale
 
 @Composable
 fun ReportScreen(
-    viewModel: ReportViewModel = viewModel(),
-    onNavigateHome: () -> Unit
+    paddingValues: PaddingValues,
+    viewModel: ReportViewModel = viewModel()
 ) {
     val filterState by viewModel.filterState.collectAsState()
     val stats by viewModel.stats.collectAsState()
     val peakHoursReportData by viewModel.peakHoursReportData.collectAsState()
 
     ReportContent(
+        paddingValues = paddingValues,
         filterState = filterState,
         stats = stats,
         peakHoursReportData = peakHoursReportData,
@@ -86,225 +78,134 @@ fun ReportScreen(
         },
         onDateChange = { isStart, date ->
             viewModel.updateDate(isStart, date)
-        },
-        onNavigateHome = onNavigateHome
+        }
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportContent(
+    paddingValues: PaddingValues,
     filterState: ReportFilterState,
     stats: AppointmentStatistics,
     peakHoursReportData: PeakHoursReportData,
     onFilterTypeChange: (String) -> Unit,
     onDepartmentChange: (String) -> Unit,
-    onDateChange: (Boolean, String) -> Unit,
-    onNavigateHome: () -> Unit
+    onDateChange: (Boolean, String) -> Unit
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
     var isStartDatePicker by remember { mutableStateOf(true) }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.onPrimary,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                    }
-                },
-                navigationIcon = {
-                    Box(
-                        modifier = Modifier
-                            .padding(start = 16.dp)
-                            .size(50.dp)
-                            .clip(CircleShape), contentAlignment = Alignment.Center
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_logosmall),
-                            contentDescription = null,
-                            modifier = Modifier.size(50.dp)
-                        )
-                    }
-                },
-
-                actions = {
-                    IconButton(onClick = { /*TODO*/ }) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_notification),
-                            contentDescription = "Notifications",
-                            modifier = Modifier
-                                .padding(end = 8.dp)
-                                .size(24.dp)
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.onPrimary
-                )
+    Column(modifier = Modifier
+        .padding(paddingValues)
+        .padding(16.dp)
+    ) {
+        // Header
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Appointments Summary", style = MaterialTheme.typography.displayMedium)
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                painter = painterResource(id = R.drawable.ic_info),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(18.dp)
             )
-        },
-        bottomBar = {
-            Column {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                NavigationBar(containerColor = MaterialTheme.colorScheme.onPrimary) {
-                    NavigationBarItem(icon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_home),
-                            contentDescription = "home",
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }, selected = false, onClick = onNavigateHome)
-                    NavigationBarItem(icon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_schedule),
-                            contentDescription = "schedule",
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }, selected = false, onClick = {})
-                    NavigationBarItem(icon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_report),
-                            contentDescription = "report",
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }, selected = true, onClick = {})
-                    NavigationBarItem(icon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_profile),
-                            contentDescription = "profile",
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }, selected = false, onClick = {})
-                }
-            }
         }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Filters
+        FilterDropdown(
+            "Types",
+            listOf("Weekly", "Monthly", "Yearly", "Custom Date Range"),
+            filterState.selectedType
         ) {
-            Text(
-                text = "Reports",
-                style = MaterialTheme.typography.displayLarge.copy(fontSize = 22.sp),
+            onFilterTypeChange(it)
+        }
+
+        AnimatedVisibility(visible = filterState.isCustomRangeVisible) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 2.dp, bottom = 16.dp), // Add padding to push the title down
-                textAlign = TextAlign.Center // Keep it horizontally centered
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            Column(modifier = Modifier.padding(16.dp)) {
-                // Header
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Appointments Summary", style = MaterialTheme.typography.displayMedium)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_info),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Filters
-                FilterDropdown(
-                    "Types",
-                    listOf("Weekly", "Monthly", "Yearly", "Custom Date Range"),
-                    filterState.selectedType
-                ) {
-                    onFilterTypeChange(it)
-                }
-
-                AnimatedVisibility(visible = filterState.isCustomRangeVisible) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp), horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        DateInput(
-                            "Start",
-                            filterState.startDate,
-                            Modifier.weight(1f)
-                        ) { isStartDatePicker = true; showDatePicker = true }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        DateInput(
-                            "End",
-                            filterState.endDate,
-                            Modifier.weight(1f)
-                        ) { isStartDatePicker = false; showDatePicker = true }
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                FilterDropdown(
-                    "Department",
-                    listOf(
-                        "All Department",
-                        "Cardiology",
-                        "Dermatology",
-                        "Gastroenterology",
-                        "Gynecologist",
-                        "Neurology",
-                        "Orthopedics"
-                    ),
-                    filterState.selectedDepartment
-                ) {
-                    onDepartmentChange(it)
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Stats
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    StatItem(
-                        "Total",
-                        stats.total,
-                        pillColor = MaterialTheme.colorScheme.primary,
-                        onPillColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                    StatItem(
-                        "Completed",
-                        stats.completed,
-                        stats.completedPercent,
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.onPrimary,
-                        MaterialTheme.colorScheme.primaryContainer,
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    StatItem(
-                        "Cancelled",
-                        stats.cancelled,
-                        stats.cancelledPercent,
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.onPrimary,
-                        MaterialTheme.colorScheme.errorContainer,
-                        MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                PeakHoursReport(reportData = peakHoursReportData)
+                    .padding(top = 12.dp), horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                DateInput(
+                    "Start",
+                    filterState.startDate,
+                    Modifier.weight(1f)
+                ) { isStartDatePicker = true; showDatePicker = true }
+                Spacer(modifier = Modifier.width(12.dp))
+                DateInput(
+                    "End",
+                    filterState.endDate,
+                    Modifier.weight(1f)
+                ) { isStartDatePicker = false; showDatePicker = true }
             }
         }
-    }
+        Spacer(modifier = Modifier.height(12.dp))
+        FilterDropdown(
+            "Department",
+            listOf(
+                "All Department",
+                "Cardiology",
+                "Dermatology",
+                "Gastroenterology",
+                "Gynecologist",
+                "Neurology",
+                "Orthopedics"
+            ),
+            filterState.selectedDepartment
+        ) {
+            onDepartmentChange(it)
+        }
+        Spacer(modifier = Modifier.height(24.dp))
 
+        // Stats
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            StatItem(
+                "Total",
+                stats.total,
+                pillColor = MaterialTheme.colorScheme.primary,
+                onPillColor = MaterialTheme.colorScheme.onPrimary
+            )
+            StatItem(
+                "Completed",
+                stats.completed,
+                stats.completedPercent,
+                MaterialTheme.colorScheme.primary,
+                MaterialTheme.colorScheme.onPrimary,
+                MaterialTheme.colorScheme.primaryContainer,
+                MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            StatItem(
+                "Cancelled",
+                stats.cancelled,
+                stats.cancelledPercent,
+                MaterialTheme.colorScheme.primary,
+                MaterialTheme.colorScheme.onPrimary,
+                MaterialTheme.colorScheme.errorContainer,
+                MaterialTheme.colorScheme.onErrorContainer
+            )
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        PeakHoursReport(reportData = peakHoursReportData)
+    }
 
     CustomDatePicker(
         show = showDatePicker,
         onDismiss = { showDatePicker = false },
-        onDateSelected = { date ->
+        onDateSelected = {
+            date ->
             val formattedDate = SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(date)
             onDateChange(isStartDatePicker, formattedDate)
         }
     )
 }
 
-// --- ADD THIS NEW COMPOSABLE ---
 @Composable
 fun PeakHoursReport(
     reportData: PeakHoursReportData,
@@ -491,6 +392,7 @@ fun BarChart(
 fun PreviewReportScreen() {
     QlinicTheme {
         ReportContent(
+            paddingValues = PaddingValues(),
             filterState = ReportFilterState(), // Default state
             stats = AppointmentStatistics(50, 48, 2), // Dummy data
             peakHoursReportData = PeakHoursReportData(
@@ -507,8 +409,7 @@ fun PreviewReportScreen() {
             ),
             onFilterTypeChange = {},
             onDepartmentChange = {},
-            onDateChange = { _, _ -> },
-            onNavigateHome = {}
+            onDateChange = { _, _ -> }
         )
     }
 }
@@ -518,6 +419,7 @@ fun PreviewReportScreen() {
 fun PreviewReportScreenCustomRange() {
     QlinicTheme {
         ReportContent(
+            paddingValues = PaddingValues(),
             filterState = ReportFilterState(
                 selectedType = "Custom Date Range",
                 isCustomRangeVisible = true
@@ -534,8 +436,7 @@ fun PreviewReportScreenCustomRange() {
             ),
             onFilterTypeChange = {},
             onDepartmentChange = {},
-            onDateChange = { _, _ -> },
-            onNavigateHome = {}
+            onDateChange = { _, _ -> }
         )
     }
 }
@@ -545,6 +446,7 @@ fun PreviewReportScreenCustomRange() {
 fun PreviewReportContent() {
     QlinicTheme {
         ReportContent(
+            paddingValues = PaddingValues(),
             filterState = ReportFilterState(),
             stats = AppointmentStatistics(50, 48, 2),
             // Provide sample chart data for the preview
@@ -562,8 +464,7 @@ fun PreviewReportContent() {
             ),
             onFilterTypeChange = {},
             onDepartmentChange = {},
-            onDateChange = { _, _ -> },
-            onNavigateHome = {}
+            onDateChange = { _, _ -> }
         )
     }
 }
