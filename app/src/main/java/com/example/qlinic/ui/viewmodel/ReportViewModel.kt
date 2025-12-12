@@ -75,13 +75,17 @@ class ReportViewModel : ViewModel() {
             // Fetch appointment stats
             val statsResult = repository.getStatistics(
                 currentFilters.selectedType,
-                currentFilters.selectedDepartment
+                currentFilters.selectedDepartment,
+                currentFilters.startDate,
+                currentFilters.endDate
             )
             _stats.value = statsResult
 
             val peakHoursResult = repository.getPeakHoursReportData(
                 currentFilters.selectedType,
-                currentFilters.selectedDepartment
+                currentFilters.selectedDepartment,
+                currentFilters.startDate,
+                currentFilters.endDate
             )
             _peakHoursReportData.value = peakHoursResult
         }
@@ -93,12 +97,15 @@ class ReportViewModel : ViewModel() {
                 val snapshot = db.collection("report").document(userId!!).get().await()
                 val savedReport = snapshot.toObject(ReportDocument::class.java)
                 if (savedReport != null) {
+                    // Update the stats cards
                     _stats.value = when (reportType) {
                         "Weekly" -> savedReport.weeklyStats
                         "Monthly" -> savedReport.monthlyStats
                         "Yearly" -> savedReport.yearlyStats
                         else -> AppointmentStatistics()
                     }
+
+                    _peakHoursReportData.value = repository.getPeakHoursReportData(reportType, "All", "", "")
                 }
             } catch (e: Exception) {
                 Log.e("Firestore", "Error switching to pre-calculated stats", e)
@@ -108,12 +115,19 @@ class ReportViewModel : ViewModel() {
 
     private fun fetchDataForCustomRange(startDate: String, endDate: String) {
         viewModelScope.launch {
-            val result = repository.getStatistics("Custom Date Range", _filterState.value.selectedDepartment)
+            val result = repository.getStatistics(
+                "Custom Date Range",
+                _filterState.value.selectedDepartment,
+                startDate,
+                endDate
+            )
             _stats.value = result
             // Note: We do not save custom range results to the main document.
             val chartResult = repository.getPeakHoursReportData(
                 "Custom Date Range",
-                _filterState.value.selectedDepartment
+                _filterState.value.selectedDepartment,
+                startDate,
+                endDate
             )
             _peakHoursReportData.value = chartResult
         }
@@ -123,11 +137,9 @@ class ReportViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 // Fetch all three sets of stats from the repository.
-                val weekly = repository.getStatistics("Weekly", "All")
-                val monthly = repository.getStatistics("Monthly", "All")
-                val yearly = repository.getStatistics("Yearly", "All")
-
-                val chartData = repository.getPeakHoursReportData("Weekly", "All")
+                val weekly = repository.getStatistics("Weekly", "All", "", "")
+                val monthly = repository.getStatistics("Monthly", "All", "", "")
+                val yearly = repository.getStatistics("Yearly", "All", "", "")
 
                 // Create the complete document with all the fetched data.
                 val fullReport = ReportDocument(
@@ -141,16 +153,7 @@ class ReportViewModel : ViewModel() {
                 saveReportDocument(fullReport)
 
                 // Update the UI with the currently selected stats after fetching.
-                loadPreCalculatedStats(_filterState.value.selectedType)
-
-                _stats.value = when (_filterState.value.selectedType) {
-                    "Weekly" -> weekly
-                    "Monthly" -> monthly
-                    "Yearly" -> yearly
-                    else -> AppointmentStatistics()
-                }
-                _peakHoursReportData.value = chartData
-
+                loadReportDocument()
 
             } catch (e: Exception) {
                 Log.e("Firestore", "Error fetching and saving all reports", e)
