@@ -14,27 +14,27 @@ import com.example.qlinic.ui.screen.Schedule
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = Screen.Home.route) {
+    NavHost(navController = navController, startDestination = Routes.Home.route) {
 
-        composable(Screen.Home.route) {
+        composable(Routes.Home.route) {
             MainAppScaffold(navController = navController) {paddingValues ->
                 HomeScreen(paddingValues = paddingValues,)
             }
         }
 
-        composable(Screen.Schedule.route) {
+        composable(Routes.Schedule.route) {
             MainAppScaffold(navController = navController) {paddingValues ->
                 Schedule(paddingValues = paddingValues,)
             }
         }
 
-        composable(Screen.Report.route) {
+        composable(Routes.Report.route) {
             MainAppScaffold(navController = navController) {paddingValues ->
                 ReportScreen(paddingValues = paddingValues,)
             }
         }
 
-        composable(Screen.Profile.route) {
+        composable(Routes.Profile.route) {
             MainAppScaffold(navController = navController) {paddingValues ->
                 Profile(paddingValues = paddingValues,)
             }
