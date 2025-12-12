@@ -41,28 +41,39 @@ android {
 }
 
 dependencies {
-    // Import the Firebase platform BoM (Bill of Materials)
-    // KEEP THIS line to manage all Firebase versions
-    implementation(platform(libs.firebase.bom)) // Check for latest stable BoM version
+    // --- BOMs (Bill of Materials) ---
+    // These manage the versions for all libraries in their respective families.
+    implementation(platform(libs.firebase.bom))
+    implementation(platform(libs.androidx.compose.bom)) // Use the Compose BoM to manage Compose versions
 
+    // --- Core Android & Lifecycle Dependencies ---
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.navigation.compose)
+
+    // --- Jetpack Compose UI Dependencies ---
+    // Versions are managed by the Compose BoM
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.material3) // You only need this once
+    implementation(libs.androidx.material.icons.extended) // CORRECTED: Use 'androidx' prefix
+
+    // --- Firebase Dependencies ---
+    // Versions are managed by the Firebase BoM
+    implementation(libs.firebase.auth.ktx)
+    implementation(libs.firebase.firestore.ktx)
+    implementation(libs.firebase.storage.ktx)
+
+    // --- Testing Dependencies ---
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(platform(libs.androidx.compose.bom)) // Use BoM for test dependencies too
     androidTestImplementation(libs.androidx.ui.test.junit4)
+
+    // --- Debug Dependencies ---
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-
-    implementation(libs.firebase.auth.ktx)
-    implementation(libs.firebase.firestore.ktx)
-    implementation(libs.firebase.storage)
 }

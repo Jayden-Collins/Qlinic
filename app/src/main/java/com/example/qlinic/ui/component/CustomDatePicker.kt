@@ -30,8 +30,6 @@ fun CustomDatePicker(
     onDismiss: () -> Unit,
     onDateSelected: (Date) -> Unit
 ) {
-    var currentDate by remember { mutableStateOf(Calendar.getInstance()) }
-
     if (show) {
         Popup(
             alignment = Alignment.Center,
@@ -41,34 +39,44 @@ fun CustomDatePicker(
             ),
             onDismissRequest = onDismiss
         ) {
-            Surface(
-                modifier = Modifier
-                    .width(320.dp)
-                    .wrapContentHeight(),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.onPrimary, // The main background color from your theme
-                tonalElevation = 6.dp,
-                shadowElevation = 6.dp
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    MonthHeader(
-                        currentDate = currentDate,
-                        onMonthChange = { newDate -> currentDate = newDate }
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    DaysOfWeekHeader()
-                    Spacer(modifier = Modifier.height(8.dp))
-                    CalendarGrid(
-                        currentDate = currentDate,
-                        onDateSelected = { day ->
-                            val selectedCal = currentDate.clone() as Calendar
-                            selectedCal.set(Calendar.DAY_OF_MONTH, day)
-                            onDateSelected(selectedCal.time)
-                            onDismiss()
-                        }
-                    )
+            DatePickerContent(onDismiss, onDateSelected)
+        }
+    }
+}
+
+@Composable
+fun DatePickerContent(
+    onDismiss: () -> Unit,
+    onDateSelected: (Date) -> Unit
+){
+    var currentDate by remember { mutableStateOf(Calendar.getInstance()) }
+
+    Surface(
+        modifier = Modifier
+            .width(320.dp)
+            .wrapContentHeight(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.onPrimary, // The main background color from your theme
+        tonalElevation = 6.dp,
+        shadowElevation = 6.dp
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            MonthHeader(
+                currentDate = currentDate,
+                onMonthChange = { newDate -> currentDate = newDate }
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            DaysOfWeekHeader()
+            Spacer(modifier = Modifier.height(8.dp))
+            CalendarGrid(
+                currentDate = currentDate,
+                onDateSelected = { day ->
+                    val selectedCal = currentDate.clone() as Calendar
+                    selectedCal.set(Calendar.DAY_OF_MONTH, day)
+                    onDateSelected(selectedCal.time)
+                    onDismiss()
                 }
-            }
+            )
         }
     }
 }

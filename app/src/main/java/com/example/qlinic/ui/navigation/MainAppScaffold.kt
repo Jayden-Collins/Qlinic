@@ -6,7 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.qlinic.ui.navigation.BottomNavBar
-import com.example.qlinic.ui.navigation.Screen
+import com.example.qlinic.ui.navigation.Routes
 import com.example.qlinic.ui.navigation.TopBarNav
 
 @Composable
@@ -19,19 +19,19 @@ fun MainAppScaffold(
     val currentRoute = navBackStackEntry?.destination?.route
 
     val onNavigateHome: () -> Unit =
-        { navController.navigate(Screen.Home.route) { launchSingleTop = true } }
+        { navController.navigate(Routes.Home.route) { launchSingleTop = true } }
     val onNavigateToSchedule: () -> Unit =
-        { navController.navigate(Screen.Schedule.route) { launchSingleTop = true } }
+        { navController.navigate(Routes.Schedule.route) { launchSingleTop = true } }
     val onNavigateToReport: () -> Unit =
-        { navController.navigate(Screen.Report.route) { launchSingleTop = true } }
+        { navController.navigate(Routes.Report.route) { launchSingleTop = true } }
     val onNavigateToProfile: () -> Unit =
-        { navController.navigate(Screen.Profile.route) { launchSingleTop = true } }
+        { navController.navigate(Routes.Profile.route) { launchSingleTop = true } }
 
     val title = when (currentRoute) {
-        Screen.Home.route -> "Upcoming Appointments"
-        Screen.Schedule.route -> "Doctor Schedules"
-        Screen.Report.route -> "Reports"
-        Screen.Profile.route -> "Profile"
+        Routes.Home.route -> "Upcoming Appointments"
+        Routes.Schedule.route -> "Doctor Schedules"
+        Routes.Report.route -> "Reports"
+        Routes.Profile.route -> "Profile"
         else -> "" // Default or loading title
     }
 
