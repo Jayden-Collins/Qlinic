@@ -46,7 +46,6 @@ fun DeleteConfirmationDialog(
                     Icon(
                         painter = painterResource(id = R.drawable.ic_close),
                         contentDescription = "Close",
-                        tint = Color.Gray,
                         modifier = Modifier
                             .size(12.dp)
                             .clickable { onDismiss() }
