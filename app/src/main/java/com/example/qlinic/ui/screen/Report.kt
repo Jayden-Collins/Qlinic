@@ -156,7 +156,7 @@ fun ReportContent(
         FilterDropdown(
             "Department",
             listOf(
-                "All Department",
+                "All Departments",
                 "Cardiology",
                 "Dermatology",
                 "Gastroenterology",
