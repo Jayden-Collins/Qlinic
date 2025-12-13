@@ -21,3 +21,10 @@ fun getDayStartAndEnd(date: Date): Pair<Date, Date> {
 
     return Pair(startOfDay, endOfDay)
 }
+
+fun isToday(date: Date): Boolean {
+    val cal1 = Calendar.getInstance().apply { time = date }
+    val cal2 = Calendar.getInstance()
+    return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+            cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+}
