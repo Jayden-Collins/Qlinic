@@ -1,3 +1,16 @@
 <resources>
     <string name="app_name">Qlinic</string>
+
+    <string name="reports_title">Reports</string>
+    <string name="appointments_summary_title">Appointments Summary</string>
+    <string name="types_filter_label">Types</string>
+    <string name="department_filter_label">Department</string>
+    <string name="total_stat_label">Total</string>
+    <string name="completed_stat_label">Completed</string>
+    <string name="cancelled_stat_label">Cancelled</string>
+    <string name="peak_hours_report_title">Peak Hours Report</string>
+    <string name="busiest_day_label">Busiest Day</string>
+    <string name="busiest_time_label">Busiest Time</string>
+    <string name="no_peak_hours_data">No peak hours data available.</string>
+
 </resources>
