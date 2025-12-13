@@ -8,7 +8,7 @@ data class ChartData(
     val label: String,
 
     @get:Exclude
-    val color: Color
+    val color: Color = Color.Transparent
 ) {
     // 2. The required empty constructor
     constructor() : this(0f, "", Color.Transparent)

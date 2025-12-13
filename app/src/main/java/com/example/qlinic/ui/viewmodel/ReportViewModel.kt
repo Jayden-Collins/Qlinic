@@ -34,20 +34,14 @@ class ReportViewModel : ViewModel() {
     private val _stats = MutableStateFlow(AppointmentStatistics(0, 0, 0))
     val stats: StateFlow<AppointmentStatistics> = _stats.asStateFlow()
 
-    // private val _peakHoursInfo = MutableStateFlow(PeakHoursInfo())
-    // val peakHoursInfo: StateFlow<PeakHoursInfo> = _peakHoursInfo.asStateFlow()
-
     private val _peakHoursReportData = MutableStateFlow(PeakHoursReportData())
     val peakHoursReportData: StateFlow<PeakHoursReportData> = _peakHoursReportData.asStateFlow()
 
     private val userId: String? = "cp50kt2wZWW2TdDmYFCu"
-    // private val userId: String? = Firebase.auth.currentUser?.uid
-
 
     init {
         loadReportDocument()
     }
-
 
     fun updateFilter(newState: ReportFilterState) {
         _filterState.value = newState
@@ -94,25 +88,15 @@ class ReportViewModel : ViewModel() {
         }
     }
 
+
     private fun fetchDataForCustomRange(startDate: String, endDate: String) {
         viewModelScope.launch {
             _isLoading.value = true
-            val result = repository.getStatistics(
-                "Custom Date Range",
-                _filterState.value.selectedDepartment,
-                startDate,
-                endDate
-            )
-            // Note: We do not save custom range results to the main document.
-            val chartResult = repository.getPeakHoursReportData(
-                "Custom Date Range",
-                _filterState.value.selectedDepartment,
-                startDate,
-                endDate
-            )
+            val result = repository.getStatistics("Custom Date Range", _filterState.value.selectedDepartment, startDate, endDate)
+            val chartResult = repository.getPeakHoursReportData("Custom Date Range", _filterState.value.selectedDepartment, startDate, endDate)
             _stats.value = result
             _peakHoursReportData.value = chartResult
-            _isLoading.value = false // Hide loading
+            _isLoading.value = false
         }
     }
 
@@ -145,24 +129,10 @@ class ReportViewModel : ViewModel() {
                 _filterState.value = initialReport.filters
                 _stats.value = initialReport.weeklyStats // Default to weekly
                 _peakHoursReportData.value = initialReport.weeklyPeakHours
-
             } catch (e: Exception) {
                 Log.e("Firestore", "Error creating initial document", e)
             }
             _isLoading.value = false // Hide loading
-        }
-    }
-
-    private fun saveReportDocument(report: ReportDocument) {
-        userId?.let { id ->
-            viewModelScope.launch {
-                try {
-                    db.collection("report").document(id).set(report, SetOptions.merge()).await()
-                    Log.d("Firestore", "Full report document for user $id saved successfully.")
-                } catch (e: Exception) {
-                    Log.e("Firestore", "Error saving full report for user $id", e)
-                }
-            }
         }
     }
 
@@ -204,8 +174,6 @@ class ReportViewModel : ViewModel() {
                     // It's safer to not create a new doc on a temporary network error.
                     // Just show empty state.
                 }
-            } ?: run {
-                Log.d("Firestore", "No user ID. Cannot load or save.")
             }
             _isLoading.value = false // Stop loading once data is processed
         }

@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -192,7 +193,7 @@ fun ReportContent(
                 .fillMaxSize()
         ) {
             Text(
-                text = "Reports",
+                text = stringResource(R.string.reports_title),
                 style = MaterialTheme.typography.displayLarge.copy(fontSize = 22.sp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -218,7 +219,7 @@ fun ReportContent(
                 ) {
                     // Header
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Appointments Summary", style = MaterialTheme.typography.displayMedium)
+                        Text(stringResource(R.string.appointments_summary_title), style = MaterialTheme.typography.displayMedium)
                         Spacer(modifier = Modifier.width(8.dp))
                         Icon(
                             painter = painterResource(id = R.drawable.ic_info),
@@ -231,7 +232,7 @@ fun ReportContent(
 
                     // Filters
                     FilterDropdown(
-                        "Types",
+                        stringResource(R.string.types_filter_label),
                         listOf("Weekly", "Monthly", "Yearly", "Custom Date Range"),
                         filterState.selectedType
                     ) {
@@ -260,7 +261,7 @@ fun ReportContent(
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     FilterDropdown(
-                        "Department",
+                        stringResource(R.string.department_filter_label),
                         listOf(
                             "All Department",
                             "Cardiology",
@@ -282,13 +283,13 @@ fun ReportContent(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         StatItem(
-                            "Total",
+                            stringResource(R.string.total_stat_label),
                             stats.total,
                             pillColor = MaterialTheme.colorScheme.primary,
                             onPillColor = MaterialTheme.colorScheme.onPrimary
                         )
                         StatItem(
-                            "Completed",
+                            stringResource(R.string.completed_stat_label),
                             stats.completed,
                             stats.completedPercent,
                             MaterialTheme.colorScheme.primary,
@@ -297,7 +298,7 @@ fun ReportContent(
                             MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         StatItem(
-                            "Cancelled",
+                            stringResource(R.string.cancelled_stat_label),
                             stats.cancelled,
                             stats.cancelledPercent,
                             MaterialTheme.colorScheme.primary,
@@ -326,7 +327,6 @@ fun ReportContent(
     )
 }
 
-// --- ADD THIS NEW COMPOSABLE ---
 @Composable
 fun PeakHoursReport(
     reportData: PeakHoursReportData,
@@ -335,7 +335,7 @@ fun PeakHoursReport(
     Column(modifier = modifier) {
         // Header
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Peak Hours Report", style = MaterialTheme.typography.displayMedium)
+            Text(stringResource(R.string.peak_hours_report_title), style = MaterialTheme.typography.displayMedium)
             Spacer(modifier = Modifier.width(8.dp))
             Icon(
                 painter = painterResource(id = R.drawable.ic_info),
@@ -357,14 +357,14 @@ fun PeakHoursReport(
                     // Display Busiest Day/Time text inside the container
                     Row {
                         Column(Modifier.weight(1f)) {
-                            Text("Busiest Day", style = MaterialTheme.typography.labelMedium)
+                            Text(stringResource(R.string.busiest_day_label), style = MaterialTheme.typography.labelMedium)
                             Text(
                                 text = reportData.busiestDay,
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                             )
                         }
                         Column(Modifier.weight(1f)) {
-                            Text("Busiest Time", style = MaterialTheme.typography.labelMedium)
+                            Text(stringResource(R.string.busiest_time_label), style = MaterialTheme.typography.labelMedium)
                             Text(
                                 text = reportData.busiestTime,
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
@@ -382,7 +382,7 @@ fun PeakHoursReport(
                         .height(200.dp), contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "No peak hours data available.",
+                        stringResource(R.string.no_peak_hours_data),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -403,6 +403,9 @@ fun BarChartWithAxis(
         (maxValue / 2).toInt().toString(),
         maxValue.toInt().toString()
     )
+
+    val busiestBarColor = MaterialTheme.colorScheme.primary
+    val defaultBarColor = MaterialTheme.colorScheme.secondaryContainer
 
     Row(
         modifier = modifier
@@ -436,29 +439,34 @@ fun BarChartWithAxis(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.Bottom
                 ) {
+                    val maxVal = data.maxOfOrNull { it.value }
                     data.forEach { chartData ->
-                        // Use a Box to stack the Text on top of the bar
-                        Box(
+                        val barColor = if (chartData.value == maxVal) busiestBarColor else defaultBarColor
+
+                        Column( // Use a Column for better vertical arrangement
                             modifier = Modifier.weight(1f),
-                            contentAlignment = Alignment.BottomCenter
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom
                         ) {
+                            // The Text label showing the value
+                            Text(
+                                text = chartData.value.toInt().toString(),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = Modifier.padding(bottom = 2.dp)
+                            )
+
                             // The Bar itself (the colored rectangle)
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth(0.6f) // Control bar width
+                                    .fillMaxWidth(0.6f)
                                     .fillMaxHeight(if (maxValue > 0) chartData.value / maxValue else 0f)
-                                    .background(chartData.color)
-                            )
-
-                            // The Text label showing the value
-                            Text(
-                                text = chartData.value.toInt().toString(), // Display the integer value
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    // Make text white for tall, dark bars so it's readable
-                                    color = if (chartData.value / maxValue > 0.8f) Color.White else Color.Black,
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                modifier = Modifier.padding(bottom = 4.dp)
+                                    .background(
+                                        color = barColor,
+                                        // Move shape here for cleaner code
+                                        shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+                                    )
                             )
                         }
                     }
@@ -488,63 +496,6 @@ fun BarChartWithAxis(
         }
     }
 }
-
-@Composable
-fun BarChart(
-    data: List<ChartData>,
-    modifier: Modifier = Modifier
-) {
-    val maxValue = data.maxOfOrNull { it.value } ?: 0f
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(150.dp), // Give the chart a fixed height
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.Bottom // Align bars to the bottom
-    ) {
-        data.forEach { chartData ->
-            // Use a Box to stack the value label on top of the bar and day label
-            Box(
-                modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Bottom
-                ) {
-                    // --- NEW: The value label on top of the bar ---
-                    Text(
-                        text = chartData.value.toInt().toString(),
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // The Bar itself
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.5f) // Slightly narrower bar
-                            .height(100.dp) // Give bars a consistent max height area
-                            .fillMaxHeight(if (maxValue > 0) chartData.value / maxValue else 0f)
-                            .background(
-                                chartData.color,
-                                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
-                            )
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // The Label below the bar
-                    Text(
-                        text = chartData.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1
-                    )
-                }
-            }
-        }
-    }
-}
-
 
 @Preview(showBackground = true, name = "Report Screen Default")
 @Composable
