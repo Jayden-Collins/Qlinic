@@ -49,6 +49,7 @@ import com.example.qlinic.ui.component.StatItem
 import com.example.qlinic.ui.theme.QlinicTheme
 import com.example.qlinic.ui.viewmodel.ReportViewModel
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 @Composable
@@ -95,6 +96,16 @@ fun ReportContent(
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
     var isStartDatePicker by remember { mutableStateOf(true) }
+    val dateFormat = remember { SimpleDateFormat("d MMM yyyy", Locale.getDefault()) }
+
+    val selectedPickerDate = remember(filterState.startDate, filterState.endDate, isStartDatePicker) {
+        val dateString = if (isStartDatePicker) filterState.startDate else filterState.endDate
+        try {
+            dateFormat.parse(dateString) ?: Date()
+        } catch (e: Exception) {
+            Date() // Fallback to current date if parsing fails
+        }
+    }
 
     Column(modifier = Modifier
         .padding(paddingValues)
@@ -198,11 +209,12 @@ fun ReportContent(
     CustomDatePicker(
         show = showDatePicker,
         onDismiss = { showDatePicker = false },
-        onDateSelected = {
-            date ->
-            val formattedDate = SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(date)
+        selectedDate = selectedPickerDate,
+        onDateSelected = { date ->
+            val formattedDate = dateFormat.format(date)
             onDateChange(isStartDatePicker, formattedDate)
-        }
+        },
+        disablePastDates = false
     )
 }
 
