@@ -1,12 +1,51 @@
 package com.example.qlinic.data.repository
 
 import androidx.compose.ui.graphics.Color
+import com.example.qlinic.data.model.Appointment
 import com.example.qlinic.data.model.AppointmentStatistics
 import com.example.qlinic.data.model.ChartData
 import com.example.qlinic.data.model.PeakHoursReportData
+import com.example.qlinic.data.model.Slot
+import com.example.qlinic.utils.getDayStartAndEnd
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.tasks.await
+import java.util.Date
 
 class AppointmentRepository {
+    private val db = Firebase.firestore
+    private val appointmentsCollection = db.collection("Appointment")
+
+    suspend fun bookAppointment(patientId: String, slot: Slot, date: Date): Boolean {
+        return try {
+            val (startOfDay, endOfDay) = getDayStartAndEnd(date)
+
+            val querySnapshot = appointmentsCollection
+                .whereEqualTo("slotId", slot.SlotID)
+                .whereGreaterThanOrEqualTo("appointmentDate", startOfDay)
+                .whereLessThanOrEqualTo("appointmentDate", endOfDay)
+                .get()
+                .await()
+
+            if (querySnapshot.isEmpty) {
+                val appointmentId = appointmentsCollection.document().id
+                val newAppointment = Appointment(
+                    appointmentId = appointmentId,
+                    appointmentDate = date,
+                    slotId = slot.SlotID,
+                    patientId = patientId,
+                )
+                appointmentsCollection.document(appointmentId).set(newAppointment).await()
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
 
     // Simulate a network call
     suspend fun getStatistics(type: String, department: String): AppointmentStatistics {

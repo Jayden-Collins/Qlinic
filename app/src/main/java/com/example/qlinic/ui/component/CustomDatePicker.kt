@@ -21,6 +21,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.example.qlinic.R
 import com.example.qlinic.ui.theme.QlinicTheme
+import com.example.qlinic.ui.theme.darkblue
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -282,9 +283,9 @@ private fun Day(
     val customStyle = if (isEnabled) dateStyleProvider(date) else null
 
     val backgroundColor = when{
-        isSelected -> MaterialTheme.colorScheme.primary
+        isSelected -> darkblue
         customStyle != null -> customStyle.backgroundColor
-        isToday -> MaterialTheme.colorScheme.secondaryContainer
+        isToday -> darkblue.copy(alpha = 0.3f)
         else -> Color.Transparent
     }
 
