@@ -24,11 +24,19 @@ import com.example.qlinic.ui.theme.QlinicTheme
 import java.text.SimpleDateFormat
 import java.util.*
 
+data class DayStyle(
+    val backgroundColor: Color,
+    val textColor: Color
+)
+
 @Composable
 fun CustomDatePicker(
     show: Boolean,
     onDismiss: () -> Unit,
-    onDateSelected: (Date) -> Unit
+    selectedDate: Date,
+    onDateSelected: (Date) -> Unit,
+    disablePastDates: Boolean,
+    dateStyleProvider: (Date) -> DayStyle? = { null }
 ) {
     if (show) {
         Popup(
@@ -39,7 +47,13 @@ fun CustomDatePicker(
             ),
             onDismissRequest = onDismiss
         ) {
-            DatePickerContent(onDismiss, onDateSelected)
+            DatePickerContent(
+                onDismiss = onDismiss,
+                selectedDate = selectedDate,
+                onDateSelected = onDateSelected,
+                disablePastDates = disablePastDates,
+                dateStyleProvider = dateStyleProvider
+            )
         }
     }
 }
@@ -47,9 +61,12 @@ fun CustomDatePicker(
 @Composable
 fun DatePickerContent(
     onDismiss: () -> Unit,
-    onDateSelected: (Date) -> Unit
+    selectedDate: Date,
+    onDateSelected: (Date) -> Unit,
+    disablePastDates: Boolean,
+    dateStyleProvider: (Date) -> DayStyle?
 ){
-    var currentDate by remember { mutableStateOf(Calendar.getInstance()) }
+    var displayedMonth by remember { mutableStateOf(Calendar.getInstance().apply { time = selectedDate }) }
 
     Surface(
         modifier = Modifier
@@ -62,35 +79,59 @@ fun DatePickerContent(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             MonthHeader(
-                currentDate = currentDate,
-                onMonthChange = { newDate -> currentDate = newDate }
+                currentDate = displayedMonth,
+                disablePastDates = disablePastDates,
+                onMonthChange = { newDate -> displayedMonth = newDate }
             )
+
             Spacer(modifier = Modifier.height(16.dp))
+
             DaysOfWeekHeader()
+
             Spacer(modifier = Modifier.height(8.dp))
+
             CalendarGrid(
-                currentDate = currentDate,
-                onDateSelected = { day ->
-                    val selectedCal = currentDate.clone() as Calendar
-                    selectedCal.set(Calendar.DAY_OF_MONTH, day)
-                    onDateSelected(selectedCal.time)
+                displayedMonth = displayedMonth,
+                selectedDate = selectedDate,
+                onDateSelected = {
+                    onDateSelected(it)
                     onDismiss()
-                }
+                },
+                disablePastDates = disablePastDates,
+                dateStyleProvider = dateStyleProvider
             )
         }
     }
 }
 
 @Composable
-private fun MonthHeader(currentDate: Calendar, onMonthChange: (Calendar) -> Unit) {
+private fun MonthHeader(
+    currentDate: Calendar,
+    disablePastDates: Boolean,
+    onMonthChange: (Calendar) -> Unit
+) {
     val monthFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+
+    // The previous month button is enabled only if we are not disabling past dates,
+    // or if the currently displayed month is after the current system month.
+    val isPrevButtonEnabled = !disablePastDates || run {
+        val today = Calendar.getInstance()
+        val displayedYear = currentDate.get(Calendar.YEAR)
+        val displayedMonth = currentDate.get(Calendar.MONTH)
+        val currentYear = today.get(Calendar.YEAR)
+        val currentMonth = today.get(Calendar.MONTH)
+
+        displayedYear > currentYear || (displayedYear == currentYear && displayedMonth > currentMonth)
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = {
+        IconButton(
+            enabled = isPrevButtonEnabled,
+            onClick = {
             val newDate = currentDate.clone() as Calendar
             newDate.add(Calendar.MONTH, -1)
             onMonthChange(newDate)
@@ -132,41 +173,53 @@ private fun DaysOfWeekHeader() {
 }
 
 @Composable
-private fun CalendarGrid(currentDate: Calendar, onDateSelected: (Int) -> Unit) {
-    val cal = currentDate.clone() as Calendar
+private fun CalendarGrid(
+    displayedMonth: Calendar,
+    selectedDate: Date,
+    onDateSelected: (Date) -> Unit,
+    disablePastDates: Boolean,
+    dateStyleProvider: (Date) -> DayStyle?
+) {
+    val cal = displayedMonth.clone() as Calendar
     cal.set(Calendar.DAY_OF_MONTH, 1)
 
     // Get info about the current month
     val firstDayOfWeek = cal.get(Calendar.DAY_OF_WEEK) - 1 // Sunday is 1, so adjust to 0
     val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
 
+    // Create a list to hold all the dates to be displayed
+    val dates = mutableListOf<Date>()
+
     // Get info about the previous month
-    val prevMonth = cal.clone() as Calendar
+    val prevMonth = displayedMonth.clone() as Calendar
     prevMonth.add(Calendar.MONTH, -1)
     val daysInPrevMonth = prevMonth.getActualMaximum(Calendar.DAY_OF_MONTH)
 
-    val today = Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
-    val isCurrentMonthAndYear = cal.get(Calendar.YEAR) == Calendar.getInstance().get(Calendar.YEAR) &&
-            cal.get(Calendar.MONTH) == Calendar.getInstance().get(Calendar.MONTH)
-
-    // Create a list to hold all the dates to be displayed
-    val dates = mutableListOf<Pair<Int, Boolean>>()
-
-    // 1. Add days from the previous month
+    // Add days from the previous month
     for (i in 0 until firstDayOfWeek) {
         val day = daysInPrevMonth - firstDayOfWeek + 1 + i
-        dates.add(Pair(day, false)) // false indicates it's not in the current month
+        val dateCal = prevMonth.clone() as Calendar
+        dateCal.set(Calendar.DAY_OF_MONTH, day)
+        dates.add(dateCal.time)
     }
 
-    // 2. Add days from the current month
+    // Add days for the current month
     for (i in 1..daysInMonth) {
-        dates.add(Pair(i, true)) // true indicates it's in the current month
+        val dateCal = displayedMonth.clone() as Calendar
+        dateCal.set(Calendar.DAY_OF_MONTH, i)
+        dates.add(dateCal.time)
     }
 
-    // 3. Add days from the next month to fill the grid
-    val remaining = 42 - dates.size // A 6-week grid has 42 cells
-    for (i in 1..remaining) {
-        dates.add(Pair(i, false)) // false indicates it's not in the current month
+    // Get info about the next month
+    val nextMonth = displayedMonth.clone() as Calendar
+    nextMonth.add(Calendar.MONTH, 1)
+    var nextMonthDay = 1
+
+    // Add empty cells for the next month to fill the last row
+    while (dates.size % 7 != 0){
+        val dateCal = nextMonth.clone() as Calendar
+        dateCal.set(Calendar.DAY_OF_MONTH, nextMonthDay++)
+        dates.add(dateCal.time)
     }
 
     val chunkedDates = dates.chunked(7)
@@ -179,19 +232,20 @@ private fun CalendarGrid(currentDate: Calendar, onDateSelected: (Int) -> Unit) {
                     .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
-                for ((day, isInCurrentMonth) in week) {
+                for (date in week) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .aspectRatio(1f),
                         contentAlignment = Alignment.Center
                     ) {
-                        val isToday = day == today && isCurrentMonthAndYear && isInCurrentMonth
                         Day(
-                            day = day,
-                            isToday = isToday,
-                            isInCurrentMonth = isInCurrentMonth,
-                            onClick = { if (isInCurrentMonth) onDateSelected(it) }
+                            date = date,
+                            selectedDate = selectedDate,
+                            displayedMonth = displayedMonth,
+                            onClick = { onDateSelected(it) },
+                            disablePastDates = disablePastDates,
+                            dateStyleProvider = dateStyleProvider
                         )
                     }
                 }
@@ -201,14 +255,52 @@ private fun CalendarGrid(currentDate: Calendar, onDateSelected: (Int) -> Unit) {
 }
 
 @Composable
-private fun Day(day: Int, isToday: Boolean, isInCurrentMonth: Boolean, onClick: (Int) -> Unit) {
-    val clickableModifier = if (isInCurrentMonth) {
-        Modifier.clickable { onClick(day) }
+private fun Day(
+    date: Date,
+    selectedDate: Date,
+    displayedMonth: Calendar,
+    onClick: (Date) -> Unit,
+    disablePastDates: Boolean,
+    dateStyleProvider: (Date) -> DayStyle?
+) {
+    val cal = Calendar.getInstance().apply{ time = date }
+    val day = cal.get(Calendar.DAY_OF_MONTH)
+
+    val isSelected = isSameDay(date, selectedDate)
+    val isToday = isSameDay(date, Date())
+    val isInDisplayedMonth = cal.get(Calendar.MONTH) == displayedMonth.get(Calendar.MONTH)
+
+    val today = Calendar.getInstance()
+    today.set(Calendar.HOUR_OF_DAY, 0)
+    today.set(Calendar.MINUTE, 0)
+    today.set(Calendar.SECOND, 0)
+    today.set(Calendar.MILLISECOND, 0)
+    val isPast = date.before(today.time)
+
+    val isEnabled = (!disablePastDates || !isPast) && isInDisplayedMonth
+
+    val customStyle = if (isEnabled) dateStyleProvider(date) else null
+
+    val backgroundColor = when{
+        isSelected -> MaterialTheme.colorScheme.primary
+        customStyle != null -> customStyle.backgroundColor
+        isToday -> MaterialTheme.colorScheme.secondaryContainer
+        else -> Color.Transparent
+    }
+
+    val textColor = when{
+        isSelected -> MaterialTheme.colorScheme.onPrimary
+        customStyle != null -> customStyle.textColor
+        isToday -> MaterialTheme.colorScheme.onSecondaryContainer
+        isEnabled -> MaterialTheme.colorScheme.onSurface
+        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    }
+
+    val clickableModifier = if (isEnabled) {
+        Modifier.clickable { onClick(date) }
     } else {
         Modifier // If not in the current month, disable the click
     }
-
-    val backgroundColor = if (isToday) MaterialTheme.colorScheme.scrim else Color.Transparent
 
     Box(
         modifier = Modifier
@@ -218,13 +310,6 @@ private fun Day(day: Int, isToday: Boolean, isInCurrentMonth: Boolean, onClick: 
             .then(clickableModifier),
         contentAlignment = Alignment.Center
     ) {
-        // NEW: Use MaterialTheme colors for the text
-        val textColor = when {
-            isToday -> MaterialTheme.colorScheme.onPrimary // Text color on the selected day
-            isInCurrentMonth -> MaterialTheme.colorScheme.onSurface // Normal day text
-            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) // Disabled (faded) color
-        }
-
         Text(
             text = day.toString(),
             style = MaterialTheme.typography.labelMedium,
@@ -233,34 +318,31 @@ private fun Day(day: Int, isToday: Boolean, isInCurrentMonth: Boolean, onClick: 
     }
 }
 
+fun isSameDay(date1: Date, date2: Date): Boolean{
+    val cal1 = Calendar.getInstance().apply { time = date1 }
+    val cal2 = Calendar.getInstance().apply { time = date2 }
+    return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+            cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+}
 
 @Preview(showBackground = true, name = "Custom Date Picker Preview")
 @Composable
 private fun PreviewCustomDatePicker() {
     QlinicTheme {
-        Surface(
-            modifier = Modifier
-                .width(300.dp)
-                .wrapContentHeight(),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.onPrimary,
-            tonalElevation = 8.dp,
-            shadowElevation = 8.dp
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                var currentDate by remember { mutableStateOf(Calendar.getInstance()) }
-                MonthHeader(
-                    currentDate = currentDate,
-                    onMonthChange = { newDate -> currentDate = newDate }
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                DaysOfWeekHeader()
-                Spacer(modifier = Modifier.height(8.dp))
-                CalendarGrid(
-                    currentDate = currentDate,
-                    onDateSelected = { }
-                )
+        var selectedDate by remember { mutableStateOf(Date()) }
+        DatePickerContent(
+            onDismiss = {},
+            selectedDate = selectedDate,
+            onDateSelected = { selectedDate = it },
+            disablePastDates = true,
+            dateStyleProvider = { date ->
+                val cal = Calendar.getInstance().apply { time = date }
+                if (cal.get(Calendar.DAY_OF_WEEK) == Calendar.SATURDAY || cal.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY) {
+                    DayStyle(backgroundColor = Color.Red.copy(alpha = 0.3f), textColor = Color.Red)
+                } else {
+                    null
+                }
             }
-        }
+        )
     }
 }
