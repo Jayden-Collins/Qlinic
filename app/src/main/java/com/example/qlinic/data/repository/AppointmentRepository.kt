@@ -33,6 +33,8 @@ class AppointmentRepository {
                 val newAppointment = Appointment(
                     appointmentId = appointmentId,
                     appointmentDate = date,
+                    status = "Booked",
+                    isNotifSent = false,
                     slotId = slot.SlotID,
                     patientId = patientId,
                 )
