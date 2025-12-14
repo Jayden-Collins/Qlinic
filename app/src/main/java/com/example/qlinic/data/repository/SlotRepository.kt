@@ -1,5 +1,6 @@
 package com.example.qlinic.data.repository
 
+import android.util.Log
 import com.example.qlinic.data.model.Appointment
 import com.example.qlinic.data.model.Slot
 import com.example.qlinic.utils.getDayStartAndEnd
@@ -11,6 +12,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -29,8 +31,8 @@ class SlotRepository {
         val dayOfWeek = dayOfWeekFormat.format(date)
 
         var query: Query = db.collection("Slot")
-            .whereEqualTo("doctorID", doctorID)
-            .whereEqualTo("dayOfWeek", dayOfWeek)
+            .whereEqualTo("DoctorID", doctorID)
+            .whereEqualTo("DayOfWeek", dayOfWeek)
 
         if (isToday(date)) {
             val currentTime = SimpleDateFormat("HH:mm", Locale.ENGLISH).format(Date())
@@ -40,76 +42,88 @@ class SlotRepository {
         // Listen for changes in the doctor's slots
         val slotsListener = query.addSnapshotListener { slotsSnapshot, error ->
                 if (error != null) {
-                    close(error)
+                    Log.e("SlotRepository", "Error fetching slots", error)
+                    close(error) // Close the flow on error
                     return@addSnapshotListener
                 }
 
                 if (slotsSnapshot == null) {
-                    close(IllegalStateException("Slots snapshot is null"))
+                    Log.w("SlotRepository", "Slots snapshot is null, but no error reported.")
+                    trySend(emptyList()) // Send an empty list to avoid hanging
                     return@addSnapshotListener
                 }
 
                 val allSlots = slotsSnapshot.documents.mapNotNull { it.toObject(Slot::class.java) }
+                Log.d("SlotRepository", "Fetched ${allSlots.size} slots for doctor $doctorID on $date")
 
-                // After fetching slots, check for booked appointments and availability exceptions
-                // Use a coroutine to perform async operations
+                // Launch a coroutine to handle asynchronous filtering
                 launch {
-                    // 1. Fetch booked appointments for the day
-                    db.collection("Appointment")
-                        .whereEqualTo("doctorID", doctorID)
-                        .whereGreaterThanOrEqualTo("appointmentDate", startOfDay)
-                        .whereLessThanOrEqualTo("appointmentDate", endOfDay)
-                        .get()
-                        .addOnSuccessListener { appointmentSnapshot ->
-                            val bookedSlotIDs = appointmentSnapshot.documents
-                                .mapNotNull { it.toObject(Appointment::class.java)?.slotId }
-                                .toSet()
+                    try {
+                        // 1. Fetch booked appointments for the day using await()
+                        val appointmentSnapshot = db.collection("Appointment")
+                            .whereGreaterThanOrEqualTo("appointmentDate", startOfDay)
+                            .whereLessThanOrEqualTo("appointmentDate", endOfDay)
+                            .get()
+                            .await()
 
-                            launch {
-                                // 2. Fetch availability exceptions for the day
-                                val exceptions = availabilityExceptionRepository
-                                    .getDoctorAvailabilityExceptionsForRange(startOfDay, endOfDay, doctorID)
+                        val bookedSlotIDs = appointmentSnapshot.documents
+                            .mapNotNull { it.toObject(Appointment::class.java)?.slotId }
+                            .toSet()
+                        Log.d("SlotRepository", "Successfully fetched ${bookedSlotIDs.size} booked appointments.")
 
-                                // 3. Filter slots
-                                val availableSlots = allSlots.filter { slot ->
-                                    val isBooked = bookedSlotIDs.contains(slot.SlotID)
-                                    if (isBooked) return@filter false
 
-                                    // Check if the slot falls within any exception period
-                                    val slotTimeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-                                    val slotStartTime = slotTimeFormat.parse(slot.SlotStartTime)
+                        // 2. Fetch availability exceptions for the day
+                        val exceptions = availabilityExceptionRepository
+                            .getDoctorAvailabilityExceptionsForRange(startOfDay, endOfDay, doctorID)
+                        Log.d("SlotRepository", "Found ${exceptions.size} exceptions.")
 
-                                    val slotStartCalendar = Calendar.getInstance().apply {
-                                        time = date // Base date
-                                        val startCal = Calendar.getInstance().apply { time = slotStartTime!! }
-                                        set(Calendar.HOUR_OF_DAY, startCal.get(Calendar.HOUR_OF_DAY))
-                                        set(Calendar.MINUTE, startCal.get(Calendar.MINUTE))
-                                        set(Calendar.SECOND, 0)
-                                        set(Calendar.MILLISECOND, 0)
-                                    }
+                        // 3. Filter slots
+                        val availableSlots = allSlots.filter { slot ->
+                            val isBooked = bookedSlotIDs.contains(slot.SlotID)
+                            if (isBooked) return@filter false
 
-                                    val slotEndCalendar = Calendar.getInstance().apply {
-                                        time = slotStartCalendar.time
-                                        add(Calendar.MINUTE, 30) // Assuming 30-minute slots
-                                    }
+                            // Check if the slot falls within any exception period
+                            val slotTimeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+                            val slotStartTime = slotTimeFormat.parse(slot.SlotStartTime)
 
-                                    val isUnavailable = exceptions.any { exception ->
-                                        val exceptionStart = exception.startDateTime
-                                        val exceptionEnd = exception.endDateTime
-                                        // Check for overlap: (slotStart < exceptionEnd) and (slotEnd > exceptionStart)
-                                        slotStartCalendar.time.before(exceptionEnd) && slotEndCalendar.time.after(exceptionStart)
-                                    }
-
-                                    !isUnavailable
-                                }
-                                trySend(availableSlots).isSuccess
+                            val slotStartCalendar = Calendar.getInstance().apply {
+                                time = date // Base date
+                                val startCal = Calendar.getInstance().apply { time = slotStartTime!! }
+                                set(Calendar.HOUR_OF_DAY, startCal.get(Calendar.HOUR_OF_DAY))
+                                set(Calendar.MINUTE, startCal.get(Calendar.MINUTE))
+                                set(Calendar.SECOND, 0)
+                                set(Calendar.MILLISECOND, 0)
                             }
+
+                            val slotEndCalendar = Calendar.getInstance().apply {
+                                time = slotStartCalendar.time
+                                add(Calendar.MINUTE, 30) // Assuming 30-minute slots
+                            }
+
+                            val isUnavailable = exceptions.any { exception ->
+                                val exceptionStart = exception.startDateTime
+                                val exceptionEnd = exception.endDateTime
+                                // Check for overlap: (slotStart < exceptionEnd) and (slotEnd > exceptionStart)
+                                slotStartCalendar.time.before(exceptionEnd) && slotEndCalendar.time.after(exceptionStart)
+                            }
+
+                            !isUnavailable
                         }
-                        .addOnFailureListener { e ->
-                            close(e)
-                        }
+
+                        Log.d("SlotRepository", "Final available slots count: ${availableSlots.size}. Sending to flow.")
+                        trySend(availableSlots)
+
+                    } catch (e: Exception) {
+                        Log.e("SlotRepository", "Error filtering slots", e)
+                        close(e) // Close the flow on any exception
+                    }
                 }
             }
-        awaitClose { slotsListener.remove() }
+
+        // This will be called when the Flow is cancelled or closed
+        awaitClose {
+            Log.d("SlotRepository", "Closing slots listener.")
+            slotsListener.remove()
+        }
     }
 }

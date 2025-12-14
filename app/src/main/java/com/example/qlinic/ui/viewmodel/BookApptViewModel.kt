@@ -1,5 +1,6 @@
 package com.example.qlinic.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.qlinic.data.model.Slot
@@ -18,6 +19,9 @@ class BookApptViewModel : ViewModel() {
     private val _availableSlots = MutableStateFlow<List<Slot>>(emptyList())
     val availableSlots = _availableSlots.asStateFlow()
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading = _isLoading.asStateFlow()
+
     private val _selectedDate = MutableStateFlow(Date())
     val selectedDate = _selectedDate.asStateFlow()
 
@@ -26,9 +30,16 @@ class BookApptViewModel : ViewModel() {
 
     fun getDoctorSlots(doctorId: String, date: Date) {
         viewModelScope.launch {
+            // 1. Set loading to true and clear old slots
+            _isLoading.value = true
+            _availableSlots.value = emptyList()
+            
             slotRepository.listenForDoctorSlotsByDate(doctorId, date)
                 .collect { slots ->
+                    // 2. Update slots and set loading to false
                     _availableSlots.value = slots.sortedBy { it.SlotStartTime }
+                    _isLoading.value = false
+                    Log.d("BookApptViewModel", "slots.size is ${slots.size}, availableSlots.value.size is ${availableSlots.value.size}")
                 }
         }
     }
