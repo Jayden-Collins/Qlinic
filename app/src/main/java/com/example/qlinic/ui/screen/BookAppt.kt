@@ -10,6 +10,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,6 +46,7 @@ fun BookAppt(
     val selectedDate by viewModel.selectedDate.collectAsState()
     val availableSlots by viewModel.availableSlots.collectAsState()
     val selectedSlot by viewModel.selectedSlot.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
     LaunchedEffect(selectedDate) {
         viewModel.getDoctorSlots(selectedDoctor, selectedDate)
@@ -93,29 +95,38 @@ fun BookAppt(
 
             Spacer(Modifier.padding(8.dp))
 
-            if (!availableSlots.isEmpty()){
-                TimeSlotGrid(
-                    modifier = Modifier.weight(1f),
-                    slots = availableSlots,
-                    selectedSlot = selectedSlot,
-                    onSlotSelected = { slot ->
-                        viewModel.onSlotSelected(slot)
-                    }
-                )
-            } else {
+            if (isLoading) {
                 Box(
                     modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "No slots available.\nPlease select another date.",
-                        style = MaterialTheme.typography.bodySmall,
-                        textAlign = TextAlign.Center
+                    CircularProgressIndicator()
+                }
+            } else {
+                if (availableSlots.isNotEmpty()){
+                    TimeSlotGrid(
+                        modifier = Modifier.weight(1f),
+                        slots = availableSlots,
+                        selectedSlot = selectedSlot,
+                        onSlotSelected = { slot ->
+                            viewModel.onSlotSelected(slot)
+                        }
                     )
+                } else {
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No slots available.\nPlease select another date.",
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
 
-            val isButtonEnabled = selectedSlot != null && !availableSlots.isEmpty()
+            val isButtonEnabled = selectedSlot != null && !isLoading
 
             Button(
                 onClick = { if (isButtonEnabled) {
@@ -128,8 +139,10 @@ fun BookAppt(
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = teal,
-                    contentColor = white
+                    contentColor = white,
+                    disabledContainerColor = teal.copy(alpha = 0.5f)
                 ),
+                enabled = isButtonEnabled,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp, horizontal = 8.dp),
