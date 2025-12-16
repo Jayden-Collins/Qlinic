@@ -62,6 +62,7 @@ import com.example.qlinic.ui.component.StatItem
 import com.example.qlinic.ui.theme.QlinicTheme
 import com.example.qlinic.ui.viewmodel.ReportViewModel
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 @Composable
@@ -316,6 +317,7 @@ fun ReportContent(
         }
     }
 
+    val dateToPass = if (isStartDatePicker) filterState.startDate else filterState.endDate
 
     CustomDatePicker(
         show = showDatePicker,
@@ -323,7 +325,15 @@ fun ReportContent(
         onDateSelected = { date ->
             val formattedDate = SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(date)
             onDateChange(isStartDatePicker, formattedDate)
-        }
+        },
+        // THE FIX: Wrap the date parsing in a try-catch block for safety.
+        selectedDate = try {
+            SimpleDateFormat("d MMM yyyy", Locale.getDefault()).parse(dateToPass)
+        } catch (e: Exception) {
+            // If parsing fails (e.g., the string is empty), fall back to today's date.
+            Date()
+        },
+        disablePastDates = true
     )
 }
 
@@ -544,35 +554,6 @@ fun PreviewReportScreenCustomRange() {
                 ),
                 busiestDay = "Tuesday",
                 busiestTime = "3 PM - 4 PM"
-            ),
-            onFilterTypeChange = {},
-            onDepartmentChange = {},
-            onDateChange = { _, _ -> },
-            onNavigateHome = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewReportContent() {
-    QlinicTheme {
-        ReportContent(
-            isLoading = false,
-            filterState = ReportFilterState(),
-            stats = AppointmentStatistics(50, 48, 2),
-            // Provide sample chart data for the preview
-            peakHoursReportData = PeakHoursReportData(
-                chartData = listOf(
-                    ChartData(12f, "Mon", Color(0xFFB0C4DE)),
-                    ChartData(18f, "Tue", Color(0xFFB0C4DE)),
-                    ChartData(25f, "Wed", Color(0xFF4682B4)),
-                    ChartData(15f, "Thu", Color(0xFFB0C4DE)),
-                    ChartData(22f, "Fri", Color(0xFFB0C4DE)),
-                    ChartData(8f, "Sat", Color(0xFFB0C4DE))
-                ),
-                busiestDay = "Wednesday",
-                busiestTime = "10 AM - 11 AM"
             ),
             onFilterTypeChange = {},
             onDepartmentChange = {},
