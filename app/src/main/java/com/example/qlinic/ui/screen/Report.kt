@@ -333,7 +333,8 @@ fun ReportContent(
             // If parsing fails (e.g., the string is empty), fall back to today's date.
             Date()
         },
-        disablePastDates = true
+        disablePastDates = false,
+        disableFutureDates = true
     )
 }
 

@@ -36,6 +36,7 @@ fun CustomDatePicker(
     selectedDate: Date,
     onDateSelected: (Date) -> Unit,
     disablePastDates: Boolean,
+    disableFutureDates: Boolean,
     dateStyleProvider: (Date) -> DayStyle? = { null }
 ) {
     if (show) {
@@ -52,6 +53,7 @@ fun CustomDatePicker(
                 selectedDate = selectedDate,
                 onDateSelected = onDateSelected,
                 disablePastDates = disablePastDates,
+                disableFutureDates = disableFutureDates,
                 dateStyleProvider = dateStyleProvider
             )
         }
@@ -64,6 +66,7 @@ fun DatePickerContent(
     selectedDate: Date,
     onDateSelected: (Date) -> Unit,
     disablePastDates: Boolean,
+    disableFutureDates: Boolean,
     dateStyleProvider: (Date) -> DayStyle?
 ){
     var displayedMonth by remember { mutableStateOf(Calendar.getInstance().apply { time = selectedDate }) }
@@ -81,6 +84,7 @@ fun DatePickerContent(
             MonthHeader(
                 currentDate = displayedMonth,
                 disablePastDates = disablePastDates,
+                disableFutureDates = disableFutureDates,
                 onMonthChange = { newDate -> displayedMonth = newDate }
             )
 
@@ -98,6 +102,7 @@ fun DatePickerContent(
                     onDismiss()
                 },
                 disablePastDates = disablePastDates,
+                disableFutureDates = disableFutureDates,
                 dateStyleProvider = dateStyleProvider
             )
         }
@@ -108,21 +113,18 @@ fun DatePickerContent(
 private fun MonthHeader(
     currentDate: Calendar,
     disablePastDates: Boolean,
+    disableFutureDates: Boolean,
     onMonthChange: (Calendar) -> Unit
 ) {
     val monthFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+    val today = Calendar.getInstance()
+    val isCurrentMonthAndYearForPrev = currentDate.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+            currentDate.get(Calendar.MONTH) == today.get(Calendar.MONTH)
+    val isPrevButtonEnabled = !disablePastDates || !isCurrentMonthAndYearForPrev
 
-    // The previous month button is enabled only if we are not disabling past dates,
-    // or if the currently displayed month is after the current system month.
-    val isPrevButtonEnabled = !disablePastDates || run {
-        val today = Calendar.getInstance()
-        val displayedYear = currentDate.get(Calendar.YEAR)
-        val displayedMonth = currentDate.get(Calendar.MONTH)
-        val currentYear = today.get(Calendar.YEAR)
-        val currentMonth = today.get(Calendar.MONTH)
-
-        displayedYear > currentYear || (displayedYear == currentYear && displayedMonth > currentMonth)
-    }
+    val isCurrentMonthAndYearForNext = currentDate.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+            currentDate.get(Calendar.MONTH) == today.get(Calendar.MONTH)
+    val isNextButtonEnabled = !disableFutureDates || !isCurrentMonthAndYearForNext
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -144,11 +146,13 @@ private fun MonthHeader(
             style = MaterialTheme.typography.displayMedium
         )
 
-        IconButton(onClick = {
-            val newDate = currentDate.clone() as Calendar
-            newDate.add(Calendar.MONTH, 1)
-            onMonthChange(newDate)
-        }) {
+        IconButton(
+            enabled = isNextButtonEnabled,
+            onClick = {
+                val newDate = currentDate.clone() as Calendar
+                newDate.add(Calendar.MONTH, 1)
+                onMonthChange(newDate)
+            }) {
             Icon(painter = painterResource(id = R.drawable.ic_arrowright), contentDescription = "Next Month")
         }
     }
@@ -178,6 +182,7 @@ private fun CalendarGrid(
     selectedDate: Date,
     onDateSelected: (Date) -> Unit,
     disablePastDates: Boolean,
+    disableFutureDates: Boolean,
     dateStyleProvider: (Date) -> DayStyle?
 ) {
     val cal = displayedMonth.clone() as Calendar
@@ -245,6 +250,7 @@ private fun CalendarGrid(
                             displayedMonth = displayedMonth,
                             onClick = { onDateSelected(it) },
                             disablePastDates = disablePastDates,
+                            disableFutureDates = disableFutureDates,
                             dateStyleProvider = dateStyleProvider
                         )
                     }
@@ -261,6 +267,7 @@ private fun Day(
     displayedMonth: Calendar,
     onClick: (Date) -> Unit,
     disablePastDates: Boolean,
+    disableFutureDates: Boolean,
     dateStyleProvider: (Date) -> DayStyle?
 ) {
     val cal = Calendar.getInstance().apply{ time = date }
@@ -276,8 +283,9 @@ private fun Day(
     today.set(Calendar.SECOND, 0)
     today.set(Calendar.MILLISECOND, 0)
     val isPast = date.before(today.time)
+    val isFuture = date.after(today.time)
 
-    val isEnabled = (!disablePastDates || !isPast) && isInDisplayedMonth
+    val isEnabled = (!disablePastDates || !isPast) && (!disableFutureDates || !isFuture) && isInDisplayedMonth
 
     val customStyle = if (isEnabled) dateStyleProvider(date) else null
 
@@ -334,7 +342,8 @@ private fun PreviewCustomDatePicker() {
             onDismiss = {},
             selectedDate = selectedDate,
             onDateSelected = { selectedDate = it },
-            disablePastDates = true,
+            disablePastDates = false,
+            disableFutureDates = true,
             dateStyleProvider = { date ->
                 val cal = Calendar.getInstance().apply { time = date }
                 if (cal.get(Calendar.DAY_OF_WEEK) == Calendar.SATURDAY || cal.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY) {
