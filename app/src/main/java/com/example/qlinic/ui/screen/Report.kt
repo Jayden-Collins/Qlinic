@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -30,6 +32,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -112,6 +115,8 @@ fun ReportContent(
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
     var isStartDatePicker by remember { mutableStateOf(true) }
+    var showSummaryInfoDialog by remember { mutableStateOf(false) }
+    var showPeakHoursInfoDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.onPrimary,
@@ -224,9 +229,11 @@ fun ReportContent(
                         Spacer(modifier = Modifier.width(8.dp))
                         Icon(
                             painter = painterResource(id = R.drawable.ic_info),
-                            contentDescription = null,
+                            contentDescription = "More information about Appointments Summary",
                             tint = MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clickable { showSummaryInfoDialog = true }
                         )
                     }
                     Spacer(modifier = Modifier.height(16.dp))
@@ -311,7 +318,36 @@ fun ReportContent(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    PeakHoursReport(reportData = peakHoursReportData)
+                    PeakHoursReport(
+                        reportData = peakHoursReportData,
+                        onInfoClick = { showPeakHoursInfoDialog = true }
+                    )
+
+                    if (showSummaryInfoDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showSummaryInfoDialog = false },
+                            title = { Text(text = stringResource(R.string.appointments_summary_title),  style = MaterialTheme.typography.displayMedium) },
+                            text = { Text(stringResource(R.string.more_info_details_appt_sum), style = MaterialTheme.typography.bodySmall) },
+                            confirmButton = {
+                                TextButton(onClick = { showSummaryInfoDialog = false }) {
+                                    Text(stringResource(R.string.ok))
+                                }
+                            }
+                        )
+                    }
+
+                    if (showPeakHoursInfoDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showPeakHoursInfoDialog = false },
+                            title = { Text(text = stringResource(R.string.peak_hours_report_title), style = MaterialTheme.typography.displayMedium) },
+                            text = { Text(stringResource(R.string.more_info_details_peak_hours), style = MaterialTheme.typography.bodySmall) },
+                            confirmButton = {
+                                TextButton(onClick = { showPeakHoursInfoDialog = false }) {
+                                    Text(stringResource(R.string.ok))
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -341,6 +377,7 @@ fun ReportContent(
 @Composable
 fun PeakHoursReport(
     reportData: PeakHoursReportData,
+    onInfoClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -350,9 +387,11 @@ fun PeakHoursReport(
             Spacer(modifier = Modifier.width(8.dp))
             Icon(
                 painter = painterResource(id = R.drawable.ic_info),
-                contentDescription = null,
+                contentDescription = "More information about Peak Hours Report",
                 tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier
+                    .size(18.dp)
+                    .clickable { onInfoClick() }
             )
         }
         Spacer(modifier = Modifier.height(16.dp))

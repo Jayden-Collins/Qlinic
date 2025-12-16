@@ -12,5 +12,9 @@
     <string name="busiest_day_label">Busiest Day</string>
     <string name="busiest_time_label">Busiest Time</string>
     <string name="no_peak_hours_data">No peak hours data available.</string>
+    <string name="more_info_details_appt_sum">This section shows the total number of appointments, how many were completed, and how many were cancelled for the selected time period and department.</string>
+    <string name="more_info_about_peak_hours">More information about Peak Hours Report</string>
+    <string name="more_info_details_peak_hours">This section shows the busiest day and time for the selected time period and department</string>
+    <string name="ok">OK</string>
 
 </resources>

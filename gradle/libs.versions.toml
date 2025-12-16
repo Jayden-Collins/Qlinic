@@ -13,6 +13,7 @@ googleGmsGoogleServices = "4.4.4"
 # firebaseStorage = "22.0.1"
 firebase-bom = "34.6.0"
 navigationCompose = "2.9.6"
+foundation = "1.10.0"
 # firebaseAuthKtx = "24.0.1"
 # firebaseFirestoreKtx = "26.0.2"
 
@@ -46,6 +47,7 @@ firebase-storage = { module = "com.google.firebase:firebase-storage" }
 firebase-auth-ktx = { module = "com.google.firebase:firebase-auth" }
 firebase-firestore-ktx = { module = "com.google.firebase:firebase-firestore" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 # google-firebase-auth-ktx = { module = "com.google.firebase:firebase-auth-ktx" }
 # google-firebase-firestore-ktx = { module = "com.google.firebase:firebase-firestore-ktx" }
 
