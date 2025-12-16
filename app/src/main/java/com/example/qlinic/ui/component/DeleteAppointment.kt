@@ -3,14 +3,28 @@ package com.example.qlinic.ui.component
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -54,7 +68,7 @@ fun DeleteConfirmationDialog(
 
                 // Title
                 Text(
-                    text = "Delete Appointment?",
+                    text = stringResource(R.string.delete_appointment),
                     style = MaterialTheme.typography.displayLarge.copy(fontSize = 22.sp),
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
@@ -72,7 +86,7 @@ fun DeleteConfirmationDialog(
 
                 // Warning Text
                 Text(
-                    text = "This action is non-revertible. By clicking confirm, you will permanently delete this appointment including relevant data.",
+                    text = stringResource(R.string.warning_text),
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -100,7 +114,7 @@ fun DeleteConfirmationDialog(
                         shape = RoundedCornerShape(50),
                         modifier = Modifier.weight(1f).height(48.dp)
                     ) {
-                        Text(text = "Cancel", style = MaterialTheme.typography.labelMedium)
+                        Text(text = stringResource(R.string.cancel_button), style = MaterialTheme.typography.labelMedium)
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
@@ -115,7 +129,7 @@ fun DeleteConfirmationDialog(
                         shape = RoundedCornerShape(50),
                         modifier = Modifier.weight(1f).height(48.dp)
                     ) {
-                        Text(text = "Confirm", style = MaterialTheme.typography.labelMedium)
+                        Text(text = stringResource(R.string.confirm_button), style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -161,7 +175,6 @@ fun DetailRow(label: String, value: String) {
     }
 }
 
-// --- 2. Success Dialog ---
 @Composable
 fun AppointmentDeletedSuccessDialog(
     doctorName: String,
@@ -186,7 +199,7 @@ fun AppointmentDeletedSuccessDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = "Appointment Deleted",
+                    text = stringResource(R.string.delete_appointment_success),
                     style = MaterialTheme.typography.displayLarge.copy(fontSize = 22.sp),
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
@@ -215,7 +228,7 @@ fun AppointmentDeletedSuccessDialog(
                         .height(48.dp)
                 ) {
                     Text(
-                        text = "Done",
+                        text = stringResource(R.string.done_button),
                         style = MaterialTheme.typography.labelMedium.copy(fontSize = 16.sp)
                     )
                 }
