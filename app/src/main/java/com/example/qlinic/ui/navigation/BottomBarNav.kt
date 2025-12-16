@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.qlinic.R
+import com.example.qlinic.data.model.TestUsers
+import com.example.qlinic.data.model.UserRole
 
 data class BottomNavItem(
     val route: String,
@@ -21,10 +23,10 @@ data class BottomNavItem(
 )
 
 val navigationItems = listOf(
-    BottomNavItem(Screen.Home.route, R.drawable.ic_home, "Home"),
-    BottomNavItem(Screen.Schedule.route, R.drawable.ic_schedule, "Schedule"),
-    BottomNavItem(Screen.Report.route, R.drawable.ic_report,"Report"),
-    BottomNavItem(Screen.Profile.route, R.drawable.ic_profile, "Profile")
+    BottomNavItem(Routes.Home.route, R.drawable.ic_home, "Home"),
+    BottomNavItem(Routes.Schedule.route, R.drawable.ic_schedule, "Schedule"),
+    BottomNavItem(Routes.Report.route, R.drawable.ic_report,"Report"),
+    BottomNavItem(Routes.Profile.route, R.drawable.ic_profile, "Profile")
 )
 
 @Composable
@@ -36,26 +38,33 @@ fun BottomNavBar(
     onNavigateToProfile: () -> Unit
 ) {
     val navigationActions = mapOf(
-        Screen.Home.route to onNavigateHome,
-        Screen.Schedule.route to onNavigateToSchedule,
-        Screen.Report.route to onNavigateToReport,
-        Screen.Profile.route to onNavigateToProfile
+        Routes.Home.route to onNavigateHome,
+        Routes.Schedule.route to onNavigateToSchedule,
+        Routes.Report.route to onNavigateToReport,
+        Routes.Profile.route to onNavigateToProfile
     )
 
+    val visibleItems = if (TestUsers.current.role == UserRole.PATIENT) {
+        // Patients don't see Report
+        navigationItems.filter { it.label != "Report" }
+    } else if (TestUsers.current.role == UserRole.DOCTOR) {
+        // Doctor see only Home & Profile
+        navigationItems.filter { it.label != "Report" &&  it.label != "Schedule" }
+    } else {
+        // Staff see everything
+        navigationItems
+    }
     MaterialTheme.colorScheme.primary
     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
     MaterialTheme.colorScheme.surface
 
     Column {
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
         NavigationBar(containerColor = MaterialTheme.colorScheme.onPrimary) {
-            navigationItems.forEach { item ->
+            visibleItems.forEach { item ->
                 NavigationBarItem(
                     selected = (currentRoute == item.route),
-                    onClick = {
-                        // Find the correct lambda from the map and invoke it
-                        navigationActions[item.route]?.invoke()
-                    },
+                    onClick = { navigationActions[item.route]?.invoke() },
                     icon = {
                         Icon(
                             painter = painterResource(id = item.iconResId),
@@ -64,8 +73,9 @@ fun BottomNavBar(
                         )
                     },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        selectedIconColor = MaterialTheme.colorScheme.onSurface,
+                        unselectedIconColor = MaterialTheme.colorScheme.outline,
+                        indicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
                     )
                 )
             }
