@@ -37,6 +37,8 @@ class ReportViewModel : ViewModel() {
     private val _peakHoursReportData = MutableStateFlow(PeakHoursReportData())
     val peakHoursReportData: StateFlow<PeakHoursReportData> = _peakHoursReportData.asStateFlow()
 
+    private val departments = listOf("All Department", "Cardiology", "Dermatology", "Gastroenterology", "Gynecologist", "Neurology", "Orthopedics")
+
     private val userId: String? = "cp50kt2wZWW2TdDmYFCu"
 
     init {
@@ -67,19 +69,19 @@ class ReportViewModel : ViewModel() {
         updateFilter(newFilterState)
     }
 
-    private fun loadPreCalculatedStats(reportType: String, savedReport: ReportDocument) {
+    private fun loadPreCalculatedStats(reportType: String, department: String, savedReport: ReportDocument) {
         when (reportType) {
             "Weekly" -> {
-                _stats.value = savedReport.weeklyStats
-                _peakHoursReportData.value = savedReport.weeklyPeakHours
+                _stats.value = savedReport.weeklyStats[department] ?: AppointmentStatistics()
+                _peakHoursReportData.value = savedReport.weeklyPeakHours[department] ?: PeakHoursReportData()
             }
             "Monthly" -> {
-                _stats.value = savedReport.monthlyStats
-                _peakHoursReportData.value = savedReport.monthlyPeakHours
+                _stats.value = savedReport.monthlyStats[department] ?: AppointmentStatistics()
+                _peakHoursReportData.value = savedReport.monthlyPeakHours[department] ?: PeakHoursReportData()
             }
             "Yearly" -> {
-                _stats.value = savedReport.yearlyStats
-                _peakHoursReportData.value = savedReport.yearlyPeakHours
+                _stats.value = savedReport.yearlyStats[department] ?: AppointmentStatistics()
+                _peakHoursReportData.value = savedReport.yearlyPeakHours[department] ?: PeakHoursReportData()
             }
             else -> {
                 _stats.value = AppointmentStatistics()
@@ -104,32 +106,42 @@ class ReportViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Fetch all three sets of stats from the repository.
-                val weekly = repository.getStatistics("Weekly", "All", "", "")
-                val monthly = repository.getStatistics("Monthly", "All", "", "")
-                val yearly = repository.getStatistics("Yearly", "All", "", "")
-                val weeklyPeak = repository.getPeakHoursReportData("Weekly", "All", "", "")
-                val monthlyPeak = repository.getPeakHoursReportData("Monthly", "All", "", "")
-                val yearlyPeak = repository.getPeakHoursReportData("Yearly", "All", "", "")
+                // Create maps to hold the data for all departments
+                val weeklyStatsMap = mutableMapOf<String, AppointmentStatistics>()
+                val monthlyStatsMap = mutableMapOf<String, AppointmentStatistics>()
+                val yearlyStatsMap = mutableMapOf<String, AppointmentStatistics>()
+                val weeklyPeakMap = mutableMapOf<String, PeakHoursReportData>()
+                val monthlyPeakMap = mutableMapOf<String, PeakHoursReportData>()
+                val yearlyPeakMap = mutableMapOf<String, PeakHoursReportData>()
 
-                // Create the complete document with all the fetched data.
+                // Loop through each department and fetch its specific data
+                for (department in departments) {
+                    weeklyStatsMap[department] = repository.getStatistics("Weekly", department, "", "")
+                    monthlyStatsMap[department] = repository.getStatistics("Monthly", department, "", "")
+                    yearlyStatsMap[department] = repository.getStatistics("Yearly", department, "", "")
+                    weeklyPeakMap[department] = repository.getPeakHoursReportData("Weekly", department, "", "")
+                    monthlyPeakMap[department] = repository.getPeakHoursReportData("Monthly", department, "", "")
+                    yearlyPeakMap[department] = repository.getPeakHoursReportData("Yearly", department, "", "")
+                }
+
+                // Create the complete document with the new map structure
                 val initialReport = ReportDocument(
                     filters = ReportFilterState(),
-                    weeklyStats = weekly,
-                    monthlyStats = monthly,
-                    yearlyStats = yearly,
-                    weeklyPeakHours = weeklyPeak,
-                    monthlyPeakHours = monthlyPeak,
-                    yearlyPeakHours = yearlyPeak
+                    weeklyStats = weeklyStatsMap,
+                    monthlyStats = monthlyStatsMap,
+                    yearlyStats = yearlyStatsMap,
+                    weeklyPeakHours = weeklyPeakMap,
+                    monthlyPeakHours = monthlyPeakMap,
+                    yearlyPeakHours = yearlyPeakMap
                 )
 
                 // Use .set() only once to create the document.
                 userId?.let { db.collection("report").document(it).set(initialReport).await() }
 
                 _filterState.value = initialReport.filters
-                _stats.value = initialReport.weeklyStats // Default to weekly
-                _peakHoursReportData.value = initialReport.weeklyPeakHours
-            } catch (e: Exception) {
+                _stats.value = initialReport.weeklyStats["All Department"] ?: AppointmentStatistics()
+                _peakHoursReportData.value = initialReport.weeklyPeakHours["All Department"] ?: PeakHoursReportData()
+            }  catch (e: Exception) {
                 Log.e("Firestore", "Error creating initial document", e)
             }
             _isLoading.value = false // Hide loading
@@ -161,7 +173,7 @@ class ReportViewModel : ViewModel() {
                             Log.d("Firestore", "Successfully loaded full report for user $id.")
                             _filterState.value = savedReport.filters
                             // After loading, immediately display the correct stats for the loaded filter type
-                            loadPreCalculatedStats(savedReport.filters.selectedType, savedReport)
+                            loadPreCalculatedStats(savedReport.filters.selectedType, savedReport.filters.selectedDepartment, savedReport)
                         }
                     } else {
                         // Document does NOT exist, so create it for the first time.

@@ -2,23 +2,22 @@ package com.example.qlinic.data.model
 
 data class ReportDocument(
     var filters: ReportFilterState = ReportFilterState(),
-    var weeklyStats: AppointmentStatistics = AppointmentStatistics(),
-    var monthlyStats: AppointmentStatistics = AppointmentStatistics(),
-    var yearlyStats: AppointmentStatistics = AppointmentStatistics(),
+    var weeklyStats: Map<String, AppointmentStatistics> = emptyMap(),
+    var monthlyStats: Map<String, AppointmentStatistics> = emptyMap(),
+    var yearlyStats: Map<String, AppointmentStatistics> = emptyMap(),
 
-    var weeklyPeakHours: PeakHoursReportData = PeakHoursReportData(),
-    var monthlyPeakHours: PeakHoursReportData = PeakHoursReportData(),
-    var yearlyPeakHours: PeakHoursReportData = PeakHoursReportData()
+    // The same new structure applies to Peak Hours reports.
+    var weeklyPeakHours: Map<String, PeakHoursReportData> = emptyMap(),
+    var monthlyPeakHours: Map<String, PeakHoursReportData> = emptyMap(),
+    var yearlyPeakHours: Map<String, PeakHoursReportData> = emptyMap()
 ) {
     // The empty constructor must also be updated
     constructor() : this(
         ReportFilterState(),
-        AppointmentStatistics(),
-        AppointmentStatistics(),
-        AppointmentStatistics(),
-        PeakHoursReportData(), // for weeklyPeakHours
-        PeakHoursReportData(), // for monthlyPeakHours
-        PeakHoursReportData()  // for yearlyPeakHours
-
+        emptyMap(),
+        emptyMap(),
+        emptyMap(),
+        emptyMap(),
+        emptyMap()
     )
 }
