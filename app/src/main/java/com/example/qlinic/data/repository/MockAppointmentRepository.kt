@@ -1,6 +1,5 @@
 package com.example.qlinic.data.repository
 
-import androidx.compose.ui.graphics.Color
 import com.example.qlinic.data.model.Appointment
 import com.example.qlinic.data.model.AppointmentStatus
 import com.example.qlinic.data.model.User
@@ -20,7 +19,7 @@ class MockAppointmentRepository : AppointmentRepository {
     private val patientJane = User("p2", "Jane Doe", UserRole.PATIENT, "Female, 28 y/o")
 
     // Dummy Appointment for Testing
-    private val allAppointments = listOf(
+    private val allAppointments = mutableListOf(
         Appointment(
             id = "1",
             dateTime = "Wed, May 22, 2025 - 10.00 AM",
@@ -67,16 +66,30 @@ class MockAppointmentRepository : AppointmentRepository {
     }
 
     // Used by the STAFF home screen to see everything
-    override suspend fun getAllUpcomingAppointments(): List<Appointment> {
+    override suspend fun getAllAppointments(status: AppointmentStatus): List<Appointment> {
+        return allAppointments.filter { it.status == status }
+    }
+
+    override suspend fun getAppointmentsForDoctor(
+        doctorId: String,
+        status: AppointmentStatus
+    ): List<Appointment> {
         return allAppointments.filter {
-            it.status == AppointmentStatus.UPCOMING
+            it.doctor.id == doctorId && it.status == status
         }
     }
 
-    // Used by the DOCTOR home screen to see their own schedule
-    override suspend fun getAppointmentsForDoctor(doctorId: String): List<Appointment> {
-        return allAppointments.filter {
-            it.doctor.id == doctorId && it.status == AppointmentStatus.UPCOMING
+    // 2. FIX: Add the update method
+    override suspend fun updateAppointmentStatus(appointmentId: String, newStatus: String) {
+        val index = allAppointments.indexOfFirst { it.id == appointmentId }
+        if (index != -1) {
+            val oldAppt = allAppointments[index]
+            val mappedStatus = when (newStatus) {
+                "Completed" -> AppointmentStatus.COMPLETED
+                "Cancelled" -> AppointmentStatus.CANCELLED
+                else -> AppointmentStatus.UPCOMING
+            }
+            allAppointments[index] = oldAppt.copy(status = mappedStatus)
         }
     }
 }

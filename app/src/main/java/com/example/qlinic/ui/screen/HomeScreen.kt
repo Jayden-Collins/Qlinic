@@ -2,38 +2,14 @@ package com.example.qlinic.ui.screen
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,15 +22,16 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.qlinic.R
-import com.example.qlinic.data.model.Appointment
 import com.example.qlinic.data.model.AppointmentStatus
 import com.example.qlinic.data.model.TestUsers
 import com.example.qlinic.data.model.UserRole
 import com.example.qlinic.data.repository.MockAppointmentRepository
 import com.example.qlinic.ui.theme.QlinicTheme
+import com.example.qlinic.ui.ui_state.AppointmentCardUiState
 import com.example.qlinic.ui.ui_state.HomeUiState
 import com.example.qlinic.ui.viewmodel.HomeViewModel
 import com.example.qlinic.ui.viewmodel.HomeViewModelFactory
+import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -65,6 +42,8 @@ fun HomeScreen(
     onNavigateToSchedule: () -> Unit
 ) {
     val homeUiState by homeViewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier
@@ -72,11 +51,32 @@ fun HomeScreen(
             .padding(paddingValues)
     ) {
         HomeScreenContent(
-            state = homeUiState,
-            homeViewModel = homeViewModel,
+            state = homeUiState,homeViewModel = homeViewModel,
             onTabSelected = { newStatus -> homeViewModel.onTabSelected(newStatus) },
-            onAction = { appointmentId, action -> homeViewModel.onAppointmentAction(appointmentId, action) },
+            onAction = { appointmentId, action ->
+                homeViewModel.onAppointmentAction(appointmentId, action)
+                if (action == "Complete" || action == "NoShow") {
+                    scope.launch {
+                        val message = if (action == "Complete") "Appointment Completed" else "Marked as No Show"
+                        val result = snackbarHostState.showSnackbar(
+                            message = message,
+                            actionLabel = "Undo",
+                            duration = SnackbarDuration.Short // Shows for ~4 seconds
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            homeViewModel.onAppointmentAction(appointmentId, "Undo")
+                        }
+                    }
+                }
+            },
             onNavigateToSchedule = onNavigateToSchedule
+        )
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
         )
     }
 }
@@ -128,10 +128,8 @@ fun HomeScreenContent(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Loading indicator
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 3. Grouped List Content
         if (state.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -139,7 +137,7 @@ fun HomeScreenContent(
         } else {
             if (state.selectedTab == AppointmentStatus.UPCOMING) {
 
-                val groupedData = homeViewModel.getGroupedAppointments()
+                val groupedData = homeViewModel.getGroupedUiItems()
 
                 if (groupedData.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -148,7 +146,6 @@ fun HomeScreenContent(
                             Spacer(modifier = Modifier.height(16.dp))
                             Text("No appointments in ${state.currentYearMonth.month}", color = MaterialTheme.colorScheme.outlineVariant)
                             Spacer(modifier = Modifier.height(16.dp))
-                            // Only show book button if user is Patient
                             if (state.currentUser?.role == UserRole.PATIENT) {
                                 Button(onClick = onNavigateToSchedule) { Text("Book Now") }
                             }
@@ -159,7 +156,7 @@ fun HomeScreenContent(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        groupedData.forEach { (date, appointments) ->
+                        groupedData.forEach { (date, uiItems) ->
                             stickyHeader {
                                 Text(
                                     text = date.format(DateTimeFormatter.ofPattern("EEEE, dd MMMM", Locale.getDefault())),
@@ -172,10 +169,9 @@ fun HomeScreenContent(
                                         .padding(bottom = 8.dp)
                                 )
                             }
-                            items(appointments) { appointment ->
+                            items(uiItems) { uiItem ->
                                 TimelineAppointmentRow(
-                                    appointment = appointment,
-                                    timeString = homeViewModel.parseTime(appointment.dateTime),
+                                    uiItem = uiItem,
                                     currentUserRole = state.currentUser?.role ?: UserRole.PATIENT,
                                     onActionClick = onAction
                                 )
@@ -183,10 +179,9 @@ fun HomeScreenContent(
                         }
                     }
                 }
-
             } else {
 
-                if (state.appointments.isEmpty()) {
+                if (state.appointmentItems.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
                             text = if (state.selectedTab == AppointmentStatus.COMPLETED) "No completed appointments" else "No cancelled appointments",
@@ -198,9 +193,9 @@ fun HomeScreenContent(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(items = state.appointments, key = { it.id }) { appointment ->
+                        items(items = state.appointmentItems, key = { it.id }) { uiItem ->
                             AppointmentCard(
-                                appointment = appointment,
+                                uiItem = uiItem,
                                 currentUserRole = state.currentUser?.role ?: UserRole.PATIENT,
                                 onActionClick = onAction
                             )
@@ -214,25 +209,17 @@ fun HomeScreenContent(
 
 @Composable
 fun AppointmentCard(
-    appointment: Appointment,
+    uiItem: AppointmentCardUiState,
     currentUserRole: UserRole,
     onActionClick: (String, String) -> Unit
 ) {
-    val (name, subtitle, imageUrl) = remember(appointment, currentUserRole) {
-        if (currentUserRole == UserRole.PATIENT) {
-            Triple(
-                appointment.doctor.name,
-                appointment.doctor.details ?: "",
-                appointment.doctor.imageUrl // Get Doctor Image
-            )
-        } else {
-            Triple(
-                appointment.patient.name,
-                appointment.patient.details ?: "",
-                appointment.patient.imageUrl // Get Patient Image
-            )
-        }
+    val (statusColor, statusText) = when (uiItem.displayStatus) {
+        AppointmentStatus.UPCOMING -> Pair(MaterialTheme.colorScheme.primary, "Upcoming")
+        AppointmentStatus.ONGOING -> Pair(com.example.qlinic.ui.theme.orange, "On Going") // Use Orange/Amber for active
+        AppointmentStatus.COMPLETED -> Pair(com.example.qlinic.ui.theme.teal, "Completed")
+        AppointmentStatus.CANCELLED -> Pair(com.example.qlinic.ui.theme.red, "Cancelled")
     }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -240,11 +227,31 @@ fun AppointmentCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End, //
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    color = statusColor.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(4.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, statusColor)
+                ) {
+                    Text(
+                        text = statusText.uppercase(),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = statusColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (imageUrl != null) {
+                if (uiItem.displayImageUrl != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(imageUrl)
+                            .data(uiItem.displayImageUrl)
                             .crossfade(true)
                             .build(),
                         contentDescription = "Avatar",
@@ -262,7 +269,7 @@ fun AppointmentCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = name.take(1),
+                            text = uiItem.displayName.take(1),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -271,31 +278,33 @@ fun AppointmentCard(
                 Spacer(modifier = Modifier.width(16.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = uiItem.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(text = uiItem.displaySubtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_room),
-                            contentDescription = "Location",
+                            contentDescription = "Room",
                             modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = appointment.locationOrRoom,
+                            text = uiItem.rawAppointment.locationOrRoom,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
-            if (currentUserRole == UserRole.PATIENT && appointment.status == AppointmentStatus.UPCOMING) {
+            // PATIENT & STAFF BUTTONS (Cancel / Reschedule)
+            if ((currentUserRole == UserRole.PATIENT || currentUserRole == UserRole.STAFF )&& uiItem.rawAppointment.status == AppointmentStatus.UPCOMING) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
-                        onClick = { onActionClick(appointment.id, "Cancel") },
+                        onClick = { onActionClick(uiItem.id, "Cancel") },
+                        enabled = uiItem.isActionEnabled,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.onBackground,
                             contentColor = MaterialTheme.colorScheme.onSecondary
@@ -304,13 +313,89 @@ fun AppointmentCard(
                     ) { Text("Cancel") }
 
                     Button(
-                        onClick = { onActionClick(appointment.id, "Reschedule") },
+                        onClick = { onActionClick(uiItem.id, "Reschedule") },
+                        enabled = uiItem.isActionEnabled,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.outline,
                             contentColor = MaterialTheme.colorScheme.onBackground
                         ),
                         modifier = Modifier.weight(1f)
                     ) { Text("Reschedule") }
+                }
+            }
+            // DOCTOR BUTTONS (Complete / No Show)
+            if (currentUserRole == UserRole.DOCTOR && uiItem.rawAppointment.status == AppointmentStatus.UPCOMING) {
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { onActionClick(uiItem.id, "Complete") },
+                        enabled = !uiItem.isActionEnabled,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Complete", color = MaterialTheme.colorScheme.onPrimary)
+                    }
+
+                    Button(
+                        onClick = { onActionClick(uiItem.id, "NoShow") },
+                        enabled = !uiItem.isActionEnabled,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("No Show", color = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
+            }
+            // DOCTOR HISTORY (Undo)
+            if (currentUserRole == UserRole.DOCTOR &&
+                (uiItem.rawAppointment.status == AppointmentStatus.COMPLETED || uiItem.rawAppointment.status == AppointmentStatus.CANCELLED)) {
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = { onActionClick(uiItem.id, "Complete") },
+                    enabled = uiItem.isActionEnabled, // <--- DISABLED if in future
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        // Optional: Define disabled color explicitly if needed
+                        disabledContainerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Complete", color = MaterialTheme.colorScheme.onPrimary)
+                }
+
+                Button(
+                    onClick = { onActionClick(uiItem.id, "NoShow") },
+                    enabled = uiItem.isActionEnabled, // <--- DISABLED if in future
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        disabledContainerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("No Show", color = MaterialTheme.colorScheme.onPrimary)
+                }
+            }
+            // Doctor: Completed & Cancelled (UNDO)
+            if (currentUserRole == UserRole.DOCTOR &&
+                (uiItem.rawAppointment.status == AppointmentStatus.COMPLETED || uiItem.rawAppointment.status == AppointmentStatus.CANCELLED)) {
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = { onActionClick(uiItem.id, "Undo") },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.outline // Grey for undo
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Undo", color = MaterialTheme.colorScheme.onBackground)
                 }
             }
         }
@@ -340,7 +425,7 @@ fun MonthSelector(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            androidx.compose.material3.IconButton(
+            IconButton(
                 onClick = onPrevious,
                 enabled = canGoBack
             ) {
@@ -357,7 +442,7 @@ fun MonthSelector(
                 fontWeight = FontWeight.Bold
             )
 
-            androidx.compose.material3.IconButton(onClick = onNext) {
+            IconButton(onClick = onNext) {
                 Icon(painter = painterResource(id = R.drawable.ic_arrowright), contentDescription = "Next", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -366,8 +451,7 @@ fun MonthSelector(
 
 @Composable
 fun TimelineAppointmentRow(
-    appointment: Appointment,
-    timeString: String,
+    uiItem: AppointmentCardUiState,
     currentUserRole: UserRole,
     onActionClick: (String, String) -> Unit
 ) {
@@ -379,7 +463,7 @@ fun TimelineAppointmentRow(
         verticalAlignment = Alignment.Top
     ) {
         Text(
-            text = timeString,
+            text = uiItem.timeString,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -390,7 +474,7 @@ fun TimelineAppointmentRow(
 
         Box(modifier = Modifier.weight(1f)) {
             AppointmentCard(
-                appointment = appointment,
+                uiItem = uiItem,
                 currentUserRole = currentUserRole,
                 onActionClick = onActionClick
             )

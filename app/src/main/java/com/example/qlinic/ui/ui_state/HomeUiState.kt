@@ -7,10 +7,21 @@ import java.time.YearMonth
 
 data class HomeUiState(
     val isLoading: Boolean = false,
-    val appointments: List<Appointment> = emptyList(),
+    val appointmentItems: List<AppointmentCardUiState> = emptyList(),
     val error: String? = null,
     val selectedTab: AppointmentStatus = AppointmentStatus.UPCOMING,
-    val showTabs: Boolean = true, // False for Doctors/Staff
+    val showTabs: Boolean = true,
     val currentUser: User? = null,
     val currentYearMonth: YearMonth = YearMonth.now()
+)
+
+data class AppointmentCardUiState(
+    val id: String,
+    val rawAppointment: Appointment,
+    val displayName: String,
+    val displaySubtitle: String,
+    val displayImageUrl: String?,
+    val displayStatus: AppointmentStatus,
+    val timeString: String,
+    val isActionEnabled: Boolean
 )

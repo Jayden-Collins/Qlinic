@@ -8,30 +8,29 @@ import com.example.qlinic.data.model.AppointmentStatus
 import com.example.qlinic.data.model.User
 import com.example.qlinic.data.model.UserRole
 import com.example.qlinic.data.repository.AppointmentRepository
+import com.example.qlinic.ui.ui_state.AppointmentCardUiState
 import com.example.qlinic.ui.ui_state.HomeUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.time.LocalDate
-import java.time.ZoneId
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class HomeViewModel(
     private val repository: AppointmentRepository,
     private val currentUser: User
-
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState(currentUser = currentUser))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
-
-    private val dateFormat = SimpleDateFormat("EEE, MMM dd, yyyy - hh:mm a", Locale.getDefault())
+    private val pattern = "EEE, MMM dd, yyyy - hh:mm a"
 
     init {
-        _uiState.update { it.copy(showTabs = currentUser.role == UserRole.PATIENT) }
+        _uiState.update { it.copy(showTabs = true) }
         loadAppointments(_uiState.value.selectedTab)
     }
 
@@ -39,12 +38,54 @@ class HomeViewModel(
         _uiState.update { it.copy(isLoading = true) }
 
         viewModelScope.launch {
-            val data = when (currentUser.role) {
+            val rawData = when (currentUser.role) {
                 UserRole.PATIENT -> repository.getAppointmentsForPatient(currentUser.id, status)
-                UserRole.DOCTOR -> repository.getAppointmentsForDoctor(currentUser.id)
-                UserRole.STAFF -> repository.getAllUpcomingAppointments()
+                UserRole.DOCTOR -> repository.getAppointmentsForDoctor(currentUser.id, status)
+                UserRole.STAFF -> repository.getAllAppointments(status)
             }
-            _uiState.update { it.copy(isLoading = false, appointments = data) }
+
+            val uiItems = mapToUiState(rawData, currentUser.role)
+
+            _uiState.update { it.copy(isLoading = false, appointmentItems = uiItems) }
+        }
+    }
+
+    private fun mapToUiState(
+        appointments: List<Appointment>,
+        role: UserRole
+    ): List<AppointmentCardUiState> {
+        return appointments.map { appt ->
+
+            val (name, subtitle, img) = if (role == UserRole.PATIENT) {
+                Triple(appt.doctor.name, appt.doctor.details ?: "", appt.doctor.imageUrl)
+            } else {
+                Triple(appt.patient.name, appt.patient.details ?: "", appt.patient.imageUrl)
+            }
+
+            val isStarted = isAppointmentStarted(appt.dateTime) // Your existing helper
+            val realStatus = if (appt.status == AppointmentStatus.UPCOMING && isStarted) {
+                AppointmentStatus.ONGOING
+            } else {
+                appt.status
+            }
+
+            val buttonsEnabled = if (role == UserRole.PATIENT || role == UserRole.STAFF) {
+                !isStarted
+            } else {
+                isStarted
+            }
+            val timeStr = parseTime(appt.dateTime)
+
+            AppointmentCardUiState(
+                id = appt.id,
+                rawAppointment = appt,
+                displayName = name,
+                displaySubtitle = subtitle,
+                displayImageUrl = img,
+                displayStatus = realStatus,
+                timeString = timeStr,
+                isActionEnabled = buttonsEnabled
+            )
         }
     }
 
@@ -54,8 +95,27 @@ class HomeViewModel(
     }
 
     fun onAppointmentAction(appointmentId: String, action: String) {
-        // Handle Cancel/Reschedule asynchronously if needed
         println("User clicked $action on appointment $appointmentId")
+
+        viewModelScope.launch {
+            when (action) {
+                "Complete" -> repository.updateAppointmentStatus(appointmentId, "Completed")
+                "NoShow" -> repository.updateAppointmentStatus(appointmentId, "Cancelled")
+                "Undo" -> repository.updateAppointmentStatus(appointmentId, "Booked")
+            }
+            loadAppointments(_uiState.value.selectedTab)
+        }
+    }
+
+    fun isAppointmentStarted(dateString: String): Boolean {
+        return try {
+            val formatter = DateTimeFormatter.ofPattern("EEE, MMM dd, yyyy - hh:mm a", Locale.getDefault())
+            val apptTime = LocalDateTime.parse(dateString, formatter)
+
+            LocalDateTime.now().isAfter(apptTime)
+        } catch (e: Exception) {
+            true
+        }
     }
 
     fun onNextMonth() {
@@ -66,45 +126,41 @@ class HomeViewModel(
         _uiState.update { it.copy(currentYearMonth = it.currentYearMonth.minusMonths(1)) }
     }
 
-    // --- NEW: Helper to group appointments for the UI ---
-    // Returns a Map: [Date] -> [List of Appointments on that day]
-    fun getGroupedAppointments(): Map<LocalDate, List<Appointment>> {
+    fun getGroupedUiItems(): Map<LocalDate, List<AppointmentCardUiState>> {
         val currentMonth = _uiState.value.currentYearMonth
-
-        return _uiState.value.appointments
+        return _uiState.value.appointmentItems
             .filter {
-                // 1. Filter by Current Selected Month
-                val date = parseDate(it.dateTime)
-                date != null &&
-                        date.month == currentMonth.month &&
-                        date.year == currentMonth.year
+                val date = parseDateToLocalDate(it.rawAppointment.dateTime)
+                date != null && date.month == currentMonth.month && date.year == currentMonth.year
             }
-            .groupBy {
-                // 2. Group by Day
-                parseDate(it.dateTime)!!
-            }
-            .toSortedMap() // Sort by date (1st, 2nd, 3rd...)
+            .groupBy { parseDateToLocalDate(it.rawAppointment.dateTime)!! }
+            .toSortedMap()
     }
 
-    // Helper to extract LocalDate from your String
-    private fun parseDate(dateString: String): LocalDate? {
+    private fun checkIsStarted(dateString: String): Boolean {
         return try {
-            val date = dateFormat.parse(dateString)
-            date?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDate()
-        } catch (e: Exception) {
-            null
-        }
+            val formatter = DateTimeFormatter.ofPattern(pattern, Locale.getDefault())
+            val apptTime = LocalDateTime.parse(dateString, formatter)
+            LocalDateTime.now().isAfter(apptTime)
+        } catch (e: Exception) { true }
     }
 
-    // Helper to extract Time String (e.g. "10:00")
-    fun parseTime(dateString: String): String {
+    private fun parseTime(dateString: String): String {
         return try {
-            val date = dateFormat.parse(dateString)
-            val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-            timeFormat.format(date!!)
+            val formatter = DateTimeFormatter.ofPattern(pattern, Locale.getDefault())
+            val date = LocalDateTime.parse(dateString, formatter)
+            val timeFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault())
+            date.format(timeFormat)
         } catch (e: Exception) {
             "00:00"
         }
+    }
+
+    private fun parseDateToLocalDate(dateString: String): LocalDate? {
+        return try {
+            val formatter = DateTimeFormatter.ofPattern(pattern, Locale.getDefault())
+            LocalDateTime.parse(dateString, formatter).toLocalDate()
+        } catch (e: Exception) { null }
     }
 }
 
