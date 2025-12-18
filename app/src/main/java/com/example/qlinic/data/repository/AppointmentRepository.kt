@@ -1,180 +1,310 @@
 package com.example.qlinic.data.repository
 
-import android.R.attr.factor
-import androidx.compose.ui.graphics.Color
+import android.icu.util.Calendar
+import android.util.Log
 import com.example.qlinic.data.model.AppointmentStatistics
-import com.example.qlinic.data.model.ChartData
 import com.example.qlinic.data.model.PeakHoursReportData
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
-import kotlin.math.abs
-import kotlin.random.Random
-import kotlin.text.toFloat
 
 class AppointmentRepository {
-
-    private val dailyAppointmentsRange = 12..16
-
-    private val departmentDistribution = mapOf(
-        "Cardiology" to 0.20,      // 20%
-        "Dermatology" to 0.15,     // 15%
-        "Gastroenterology" to 0.10,  // 10%
-        "Gynecologist" to 0.25,    // 25%
-        "Neurology" to 0.15,       // 15%
-        "Orthopedics" to 0.15      // 15%
-        // Total = 1.0 (100%)
-    )
+    private val db = Firebase.firestore
 
     suspend fun getStatistics(
         type: String,
         department: String,
-        startDate: String,
-        endDate: String
+        startDateStr: String,
+        endDateStr: String
     ): AppointmentStatistics {
-        delay(500) // Simulate network latency
+        val (startDate, endDate) = getStartAndEndDates(type, startDateStr, endDateStr)
 
-
-        // 1. First, calculate the TOTAL appointments as if for "All Department".
-        val allDepartmentsTotal: Int
-        if (type == "Weekly") {
-            allDepartmentsTotal = 100
-        } else if (type == "Monthly") {
-            allDepartmentsTotal = 450
-        } else if (type == "Yearly") {
-            allDepartmentsTotal = 5400
-        } else if (type == "Custom Date Range") {
-            val numDays = getNumberOfDays(startDate, endDate)
-            val appointmentsPerDay = dailyAppointmentsRange.random()
-            allDepartmentsTotal = appointmentsPerDay * numDays
-        } else {
-            return AppointmentStatistics() // Return empty for unknown type
+        if (startDate == null || endDate == null) {
+            return AppointmentStatistics() // Return empty if dates are invalid
         }
 
-        // 2. Now, determine the final total based on the selected department.
-        val finalTotal = if (department == "All Department") {
-            allDepartmentsTotal
-        } else {
-            // Get the distribution factor for the selected department, default to 0 if not found.
-            val factor = departmentDistribution[department] ?: 0.0
-            (allDepartmentsTotal * factor).toInt()
+        try {
+            // Get a list of all doctor IDs that match the selected department
+            val doctorIds = if (department != "All Department") {
+                getDoctorIdsForDepartment(department)
+            } else {
+                emptyList() // Empty list means we don't filter by doctor
+            }
+
+            // Fetch all appointment from appointment collection
+            var query = db.collection("Appointment")
+                .whereGreaterThanOrEqualTo(
+                    "appointmentDate",
+                    com.google.firebase.Timestamp(startDate)
+                )
+                .whereLessThanOrEqualTo(
+                    "appointmentDate",
+                    com.google.firebase.Timestamp(endDate)
+                )
+
+            // Add department filter if a specific department is selected
+            if (department != "All Department") {
+                if (doctorIds.isNotEmpty()) {
+                    query = query.whereIn("doctorId", doctorIds)
+                } else {
+                    query = query.whereEqualTo("doctorId", "impossible_value_that_will_never_exist")
+                }
+            }
+
+            val snapshot = query.get().await()
+
+            // Process the results
+            var total = 0
+            var completed = 0
+            var cancelled = 0
+
+            for (document in snapshot.documents) {
+                total++
+                when (document.getString("status")) {
+                    "Completed" -> completed++
+                    "Cancelled" -> cancelled++
+                }
+            }
+
+            return AppointmentStatistics(
+                total = total,
+                completed = completed,
+                cancelled = cancelled
+            )
+
+        } catch (e: Exception) {
+            Log.e("FirestoreQuery", "Error getting appointment statistics", e)
+            return AppointmentStatistics()
         }
-
-        // 3. Calculate completed and cancelled based on this final, correct total.
-        val cancellationRate = (2..6).random() / 100.0
-        val cancelled = (finalTotal * cancellationRate).toInt()
-        val completed = finalTotal - cancelled
-
-        return AppointmentStatistics(
-            total = finalTotal,
-            completed = completed,
-            cancelled = cancelled
-        )
     }
 
-    /**
-     * Simulates fetching data for the peak hours bar chart.
-     * It now generates a different, appropriate chart for each filter type.
-     */
+    // This helper function gets the doctor IDs for a given specialization
+    private suspend fun getDoctorIdsForDepartment(departmentName: String): List<String> {
+        return try {
+            val snapshot = db.collection("Doctor")
+                .whereEqualTo("Specialization", departmentName)
+                .get()
+                .await()
+            snapshot.documents.mapNotNull { it.getString("DoctorID") }
+        } catch (e: Exception) {
+            Log.e("FirestoreQuery", "Error getting doctors for department: $departmentName", e)
+            emptyList()
+        }
+    }
+
+    private fun getStartAndEndDates(
+        type: String,
+        startDateStr: String,
+        endDateStr: String
+    ): Pair<Date?, Date?> {
+        val calendar = Calendar.getInstance()
+        return when (type) {
+            "Weekly" -> {
+                calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
+                val startOfWeek = calendar.time
+                calendar.add(Calendar.DAY_OF_WEEK, 6)
+                val endOfWeek = calendar.time
+                Pair(startOfWeek.atStartOfDay(), endOfWeek.atEndOfDay())
+            }
+
+            "Monthly" -> {
+                calendar.set(Calendar.DAY_OF_MONTH, 1)
+                val startOfMonth = calendar.time
+                calendar.add(Calendar.MONTH, 1)
+                calendar.add(Calendar.DAY_OF_MONTH, -1)
+                val endOfMonth = calendar.time
+                Pair(startOfMonth.atStartOfDay(), endOfMonth.atEndOfDay())
+            }
+
+            "Yearly" -> {
+                calendar.set(Calendar.DAY_OF_YEAR, 1)
+                val startOfYear = calendar.time
+                calendar.add(Calendar.YEAR, 1)
+                calendar.add(Calendar.DAY_OF_YEAR, -1)
+                val endOfYear = calendar.time
+                Pair(startOfYear.atStartOfDay(), endOfYear.atEndOfDay())
+            }
+
+            "Custom Date Range" -> {
+                val format = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
+                try {
+                    val customStart = format.parse(startDateStr)
+                    val customEnd = format.parse(endDateStr)
+                    Pair(customStart?.atStartOfDay(), customEnd?.atEndOfDay())
+                } catch (e: Exception) {
+                    Pair(null, null)
+                }
+            }
+
+            else -> Pair(null, null)
+        }
+    }
+
+    private fun Date.atStartOfDay(): Date {
+        val calendar = Calendar.getInstance()
+        calendar.time = this
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        return calendar.time
+    }
+
+    private fun Date.atEndOfDay(): Date {
+        val calendar = Calendar.getInstance()
+        calendar.time = this
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        return calendar.time
+    }
+
     suspend fun getPeakHoursReportData(
         type: String,
         department: String,
-        startDate: String,
-        endDate: String
+        startDateStr: String,
+        endDateStr: String
     ): PeakHoursReportData {
-        delay(600) // Simulate network latency
-
-        val departmentFactor = if (department == "All Department") {
-            1.0
-        } else {
-            departmentDistribution[department] ?: 0.0
+        val (startDate, endDate) = getStartAndEndDates(type, startDateStr, endDateStr)
+        if (startDate == null || endDate == null) {
+            return PeakHoursReportData()
         }
 
-        val data: List<ChartData>
-        val busiestDay: String
-        val busiestTime: String
-
-        // Use a 'when' block to generate different chart data based on the filter type.
-        when (type) {
-            "Weekly", "Custom Date Range" -> {
-                // For weekly or custom, show a 7-day bar chart.
-                val weeklyData = generateRandomChartData(7, listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"), departmentFactor)
-                data = weeklyData
-                busiestDay = findBusiestDay(weeklyData)
-                busiestTime = "10 AM - 11 AM" // Hard-coded for simplicity
-            }
-            "Monthly" -> {
-                // For monthly, show a 4-week bar chart.
-                val monthlyData = generateRandomChartData(4, listOf("Week 1", "Week 2", "Week 3", "Week 4"), departmentFactor)
-                data = monthlyData
-                busiestDay = findBusiestDay(monthlyData)
-                busiestTime = "2 PM - 3 PM"
-            }
-            "Yearly" -> {
-                // For yearly, show a 12-month bar chart.
-                val yearlyData = generateRandomChartData(12, listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"), departmentFactor)
-                data = yearlyData
-                busiestDay = findBusiestDay(yearlyData)
-                busiestTime = "9 AM - 10 AM"
-            }
-            else -> {
-                data = emptyList()
-                busiestDay = "No Data"
-                busiestTime = "No Data"
-            }
-        }
-
-        return PeakHoursReportData(
-            chartData = data,
-            busiestDay = busiestDay,
-            busiestTime = busiestTime
-        )
-    }
-
-    // --- HELPER FUNCTIONS ---
-
-    private fun getNumberOfDays(startDateStr: String, endDateStr: String): Int {
-        val format = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
         try {
-            val startDate = format.parse(startDateStr)
-            val endDate = format.parse(endDateStr)
-
-            if (startDate != null && endDate != null) {
-                val diffInMillis = abs(endDate.time - startDate.time)
-                val diffInDays = (diffInMillis / (1000 * 60 * 60 * 24)).toInt()
-                // Return at least 1 day if the same day is selected.
-                return if (diffInDays == 0) 1 else diffInDays + 1
+            // Get the list of doctor IDs for the selected department, if any.
+            val doctorIds = if (department != "All Department") {
+                getDoctorIdsForDepartment(department)
+            } else {
+                emptyList()
             }
-        } catch (e: Exception) {
-            // If parsing fails, return a default value.
-            return 1
-        }
-        return 1
-    }
 
-    private fun generateRandomChartData(count: Int, labels: List<String>, factor: Double): List<ChartData> {
-        val data = mutableListOf<ChartData>()
-        repeat(count) { index ->
-            val value = ((10..100).random() * factor).toFloat()
-            data.add(
-                ChartData(
-                    value = value,
-                    label = labels.getOrElse(index) { "L$index" },
-                    color = Color(0xFFB0C4DE) // Default color: LightSteelBlue
-                )
+            val chartData: List<com.example.qlinic.data.model.ChartData>
+            var busiestTime = "No Data"
+
+            val baseQuery = db.collection("Appointment")
+                .whereGreaterThanOrEqualTo("appointmentDate", com.google.firebase.Timestamp(startDate))
+                .whereLessThanOrEqualTo("appointmentDate", com.google.firebase.Timestamp(endDate))
+
+            val finalQuery = if (department != "All Department" && doctorIds.isNotEmpty()) {
+                baseQuery.whereIn("doctorId", doctorIds)
+            } else if (department != "All Department" && doctorIds.isEmpty()) {
+                baseQuery.whereEqualTo("doctorId", "impossible_value")
+            } else {
+                baseQuery
+            }
+
+            val snapshot = finalQuery.get().await()
+            val hourlyCounts = mutableMapOf<Int, Int>()
+
+            for (document in snapshot.documents) {
+                val slotId = document.getString("slotId")
+                if (slotId != null) {
+                    val slotDoc = db.collection("Slot").document(slotId).get().await()
+                    val slotStartTime = slotDoc.getString("SlotStartTime") // e.g., "09:00"
+                    if (slotStartTime != null && slotStartTime.length >= 2) {
+                        val hour = slotStartTime.substring(0, 2).toIntOrNull()
+                        if (hour != null) {
+                            hourlyCounts[hour] = (hourlyCounts[hour] ?: 0) + 1
+                        }
+                    }
+                }
+            }
+
+            val busiestHour = hourlyCounts.maxByOrNull { it.value }?.key
+            if (busiestHour != null) {
+                val endHour = busiestHour + 1
+                busiestTime = String.format(Locale.US, "%02d:00 - %02d:00", busiestHour, endHour)
+            }
+
+            when (type) {
+                "Weekly", "Custom Date Range" -> {
+                    val dailyCounts = mutableMapOf<String, Int>()
+                    val daysOfWeek = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+                    daysOfWeek.forEach { day -> dailyCounts[day] = 0 }
+
+                    for (document in snapshot.documents) {
+                        val timestamp = document.getTimestamp("appointmentDate")
+                        timestamp?.let {
+                            val cal = Calendar.getInstance()
+                            cal.time = it.toDate()
+                            val dayIndex = (cal.get(Calendar.DAY_OF_WEEK) + 5) % 7
+                            val dayLabel = daysOfWeek[dayIndex]
+                            dailyCounts[dayLabel] = (dailyCounts[dayLabel] ?: 0) + 1
+                        }
+                    }
+                    chartData = daysOfWeek.map {
+                        com.example.qlinic.data.model.ChartData(
+                            value = (dailyCounts[it] ?: 0).toFloat(),
+                            label = it
+                        )
+                    }
+                }
+
+                "Monthly" -> {
+                    // For monthly, we group appointments by week of the month.
+                    val weeklyCounts = IntArray(4) { 0 }
+                    for (document in snapshot.documents) {
+                        val timestamp = document.getTimestamp("appointmentDate")
+                        timestamp?.let {
+                            val cal = Calendar.getInstance()
+                            cal.time = it.toDate()
+                            val weekOfMonth = cal.get(Calendar.WEEK_OF_MONTH) - 1 // 0-based
+                            if (weekOfMonth in 0..3) {
+                                weeklyCounts[weekOfMonth]++
+                            }
+                        }
+                    }
+                    val labels = listOf("Week 1", "Week 2", "Week 3", "Week 4")
+                    chartData = labels.mapIndexed { index, label ->
+                        com.example.qlinic.data.model.ChartData(
+                            value = weeklyCounts[index].toFloat(),
+                            label = label
+                        )
+                    }
+                }
+
+                "Yearly" -> {
+                    val monthlyCounts = IntArray(12) { 0 }
+                    for (document in snapshot.documents) {
+                        val timestamp = document.getTimestamp("appointmentDate")
+                        timestamp?.let {
+                            val cal = Calendar.getInstance()
+                            cal.time = it.toDate()
+                            val monthIndex = cal.get(Calendar.MONTH) // 0=Jan, 1=Feb, etc.
+                            if (monthIndex in 0..11) {
+                                monthlyCounts[monthIndex]++
+                            }
+                        }
+                    }
+                    val labels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+                    chartData = labels.mapIndexed { index, label ->
+                        com.example.qlinic.data.model.ChartData(
+                            value = monthlyCounts[index].toFloat(),
+                            label = label
+                        )
+                    }
+                }
+
+                else -> {
+                    chartData = emptyList()
+                }
+            }
+
+            val busiestDay = chartData.maxByOrNull { it.value }?.label ?: "No Data"
+            return PeakHoursReportData(
+                chartData = chartData,
+                busiestDay = busiestDay,
+                busiestTime = busiestTime
             )
+        } catch (e: Exception) {
+            Log.e("FirestoreQuery", "Error getting peak hours report data", e)
+            return PeakHoursReportData()
         }
-        // Highlight the max value with a different color
-        val maxValue = data.maxOfOrNull { it.value }
-        val maxIndex = data.indexOfFirst { it.value == maxValue }
-        if (maxIndex != -1) {
-            data[maxIndex] = data[maxIndex].copy(color = Color(0xFF4682B4)) // Busiest color: SteelBlue
-        }
-        return data
-    }
-
-    private fun findBusiestDay(data: List<ChartData>): String {
-        return data.maxByOrNull { it.value }?.label ?: "No Data"
     }
 }
 
