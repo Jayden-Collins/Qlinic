@@ -68,4 +68,15 @@ dependencies {
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.firebase.storage)
+
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+
+    // Declare the dependency for Coil image loading library
+    implementation("io.coil-kt:coil-compose:2.4.0")
+
+    implementation("androidx.compose.material:material-icons-extended:<compose_version>")
+
+
+
+
 }
