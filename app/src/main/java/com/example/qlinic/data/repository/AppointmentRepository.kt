@@ -17,10 +17,9 @@ class AppointmentRepository {
     private val db = Firebase.firestore
     private val appointmentsCollection = db.collection("Appointment")
 
-    suspend fun bookAppointment(patientId: String, slot: Slot, date: Date): Boolean {
+    suspend fun bookAppointment(patientId: String, slot: Slot, date: Date, symptoms: String): Boolean {
         return try {
             val (startOfDay, endOfDay) = getDayStartAndEnd(date)
-
             val querySnapshot = appointmentsCollection
                 .whereEqualTo("slotId", slot.SlotID)
                 .whereGreaterThanOrEqualTo("appointmentDate", startOfDay)
@@ -33,6 +32,7 @@ class AppointmentRepository {
                 val newAppointment = Appointment(
                     appointmentId = appointmentId,
                     appointmentDate = date,
+                    symptoms = symptoms,
                     status = "Booked",
                     isNotifSent = false,
                     slotId = slot.SlotID,

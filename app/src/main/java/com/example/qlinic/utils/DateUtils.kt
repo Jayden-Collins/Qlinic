@@ -1,7 +1,9 @@
 package com.example.qlinic.utils
 
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
+import java.util.Locale
 
 fun getDayStartAndEnd(date: Date): Pair<Date, Date> {
     val calendar = Calendar.getInstance()
@@ -27,4 +29,15 @@ fun isToday(date: Date): Boolean {
     val cal2 = Calendar.getInstance()
     return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
             cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+}
+
+fun formatTime(time24: String): String {
+    return try {
+        val inputFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val outputFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+        val date = inputFormat.parse(time24)
+        outputFormat.format(date!!)
+    } catch (e: Exception) {
+        time24 // Return original string if formatting fails
+    }
 }

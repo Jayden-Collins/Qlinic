@@ -59,14 +59,17 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3) // You only need this once
     implementation(libs.androidx.material.icons.extended) // CORRECTED: Use 'androidx' prefix
+    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
 
     // --- Firebase Dependencies ---
     // Versions are managed by the Firebase BoM
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.firebase.storage.ktx)
+    implementation("com.google.firebase:firebase-messaging") // Add FCM dependency
     implementation(libs.material3)
     implementation(libs.play.services.coroutines)
+    implementation(libs.ui)
 
 
     // --- Testing Dependencies ---
