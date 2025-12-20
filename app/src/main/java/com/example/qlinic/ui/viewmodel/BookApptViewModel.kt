@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.qlinic.data.model.Patient
 import com.example.qlinic.data.model.Slot
 import com.example.qlinic.data.repository.AppointmentRepository
+import com.example.qlinic.data.repository.FirestoreAppointmentRepository
 import com.example.qlinic.data.repository.ClinicStaffRepository
 import com.example.qlinic.data.repository.PatientRepository
 import com.example.qlinic.data.repository.SlotRepository
@@ -22,7 +23,7 @@ import java.util.Locale
 
 class BookApptViewModel : ViewModel() {
     private val slotRepository = SlotRepository()
-    private val appointmentRepository = AppointmentRepository()
+    private val appointmentRepository: AppointmentRepository = FirestoreAppointmentRepository()
     private val clinicStaffRepository = ClinicStaffRepository()
     private val patientRepository = PatientRepository()
 

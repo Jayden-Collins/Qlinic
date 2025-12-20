@@ -12,6 +12,7 @@ import com.example.qlinic.ui.navigation.TopBarNav
 @Composable
 fun MainAppScaffold(
     navController: NavController,
+    screenTitle: String = "",
     //special composable lambda to hold the content of the screen
     content: @Composable (PaddingValues) -> Unit
 ) {
@@ -27,19 +28,23 @@ fun MainAppScaffold(
     val onNavigateToProfile: () -> Unit =
         { navController.navigate(Routes.Profile.route) { launchSingleTop = true } }
 
-    val title = when (currentRoute) {
-        Routes.Home.route -> "Upcoming Appointments"
-        Routes.Schedule.route -> "Doctor Schedules"
-        Routes.Report.route -> "Reports"
-        Routes.Profile.route -> "Profile"
-        else -> "" // Default or loading title
+    val finalTitle = if (screenTitle.isNotEmpty()) {
+        screenTitle
+    } else {
+        when (currentRoute) {
+            Routes.Home.route -> "Upcoming Appointments"
+            Routes.Schedule.route -> "Doctor Schedules"
+            Routes.Report.route -> "Reports"
+            Routes.Profile.route -> "Profile"
+            else -> ""
+        }
     }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.onPrimary,
         topBar = {
             TopBarNav(
-                title = title,
+                title = finalTitle,
                 onNotificationClick = { /* TODO: Handle notification click */ }
             )
         },

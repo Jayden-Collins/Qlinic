@@ -71,10 +71,10 @@ fun TopBarNav(
             style = MaterialTheme.typography.displayLarge.copy(fontSize = 22.sp),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 2.dp, bottom = 16.dp), // Keep the padding
+                .padding(top = 2.dp, bottom = 16.dp),
             textAlign = TextAlign.Center
         )
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
     }
 }
