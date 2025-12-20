@@ -35,15 +35,13 @@ fun AppNavigation() {
         composable(Routes.Home.route) {
             val repository = remember { FirestoreAppointmentRepository() }
             val currentUser = TestUsers.current
-            val dynamicTitle = if (currentUser.role == UserRole.PATIENT) {
-                "My Bookings"
-            } else if (currentUser.role == UserRole.DOCTOR){
-                "My Appointments"
-            } else {
-                "Upcoming Appointments"
+            val dynamicTitle = when (currentUser.role) {
+                UserRole.PATIENT -> "My Bookings"
+                UserRole.DOCTOR -> "My Appointments"
+                else -> "Upcoming Appointments"
             }
             val factory = HomeViewModelFactory(repository, currentUser)
-            viewModel<HomeViewModel>(factory = factory)
+            val homeViewModel: HomeViewModel = viewModel(factory = factory)
 
             MainAppScaffold(
                 navController = navController,
@@ -51,7 +49,7 @@ fun AppNavigation() {
             ) {paddingValues ->
                 HomeScreen(
                     paddingValues = paddingValues,
-                    homeViewModel = viewModel(),
+                    homeViewModel = homeViewModel,
                     onNavigateToSchedule = { navController.navigate(Routes.Schedule.route) }
                     )
             }
@@ -70,13 +68,6 @@ fun AppNavigation() {
             }
         }
 
-        composable(Routes.Schedule.route) {
-            MainAppScaffold(navController = navController) {paddingValues ->
-                Schedule(paddingValues = paddingValues,)
-            }
-        }
-
-        composable(Routes.Report.route) {
         // 3. Doctor Details Route
         composable("doctor_details/{doctorId}") {
             // We reuse the same ViewModel because it holds the 'selectedDoctor' state
