@@ -26,7 +26,8 @@ private val LightColorScheme = lightColorScheme(
     onSurface = darkblue,      // Color for text on top of surfaces.
     error = red,               // Color for showing errors.
     onError = white,           // Color for text/icons on top of the error color.
-    outline = grey             // Color for borders and dividers.
+    outline = grey,             // Color for borders and dividers.
+    tertiary = green
 
     /* You can define other colors as well */
 )

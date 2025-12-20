@@ -1,5 +1,7 @@
 package com.example.qlinic.data.model
 
+import java.util.Date
+
 data class User(
     val id: String,
     val name: String,
@@ -10,7 +12,7 @@ data class User(
 
 data class Appointment(
     val id: String,
-    val dateTime: String, // Use proper LocalDateTime in real app
+    val dateTime: Date, // Use proper LocalDateTime in real app
     val doctor: User,     // The doctor involved
     val patient: User,    // The patient involved
     val locationOrRoom: String,

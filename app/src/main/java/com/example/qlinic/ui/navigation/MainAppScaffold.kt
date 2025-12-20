@@ -13,6 +13,7 @@ import com.example.qlinic.ui.navigation.TopBarNav
 fun MainAppScaffold(
     navController: NavController,
     screenTitle: String = "",
+    onLogoClick: () -> Unit = { navController.navigate(Routes.Home.route) { launchSingleTop = true } },
     //special composable lambda to hold the content of the screen
     content: @Composable (PaddingValues) -> Unit
 ) {
@@ -32,7 +33,7 @@ fun MainAppScaffold(
         screenTitle
     } else {
         when (currentRoute) {
-            Routes.Home.route -> "Upcoming Appointments"
+            Routes.Home.route -> "All Appointments"
             Routes.Schedule.route -> "Doctor Schedules"
             Routes.Report.route -> "Reports"
             Routes.Profile.route -> "Profile"
@@ -45,6 +46,7 @@ fun MainAppScaffold(
         topBar = {
             TopBarNav(
                 title = finalTitle,
+                onLogoClick = onLogoClick,
                 onNotificationClick = { /* TODO: Handle notification click */ }
             )
         },

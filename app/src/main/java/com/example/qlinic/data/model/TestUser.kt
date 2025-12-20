@@ -25,11 +25,12 @@ object TestUsers {
     )
 
     val staff = User(
-        "S005",
+        "S003",
         "Susan Tan",
         UserRole.STAFF,
         "Front_Desk"
     )
-    val current = staff
+    val current = patient
+
 }
 

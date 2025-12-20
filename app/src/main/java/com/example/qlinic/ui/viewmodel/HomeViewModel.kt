@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -27,7 +28,6 @@ class HomeViewModel(
 
     private val _uiState = MutableStateFlow(HomeUiState(currentUser = currentUser))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
-    private val pattern = "EEE, MMM dd, yyyy - hh:mm a"
 
     init {
         _uiState.update { it.copy(showTabs = true) }
@@ -38,15 +38,38 @@ class HomeViewModel(
         _uiState.update { it.copy(isLoading = true) }
 
         viewModelScope.launch {
-            val rawData = when (currentUser.role) {
+            var rawData = when (currentUser.role) {
                 UserRole.PATIENT -> repository.getAppointmentsForPatient(currentUser.id, status)
                 UserRole.DOCTOR -> repository.getAppointmentsForDoctor(currentUser.id, status)
                 UserRole.STAFF -> repository.getAllAppointments(status)
             }
 
+            if (status == AppointmentStatus.UPCOMING) {
+                val (expired, active) = rawData.partition { shouldAutoComplete(it.dateTime) }
+
+                if (expired.isNotEmpty()) {
+                    expired.forEach { appt ->
+                        launch {
+                            repository.updateAppointmentStatus(appt.id, "Completed")
+                            println("Auto-completing appointment: ${appt.id}")
+                        }
+                    }
+                    rawData = active
+                }
+            }
+
             val uiItems = mapToUiState(rawData, currentUser.role)
 
             _uiState.update { it.copy(isLoading = false, appointmentItems = uiItems) }
+        }
+    }
+
+    private fun shouldAutoComplete(date: java.util.Date): Boolean {
+        return try {
+            val apptTime = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
+            apptTime.plusMinutes(30).isBefore(LocalDateTime.now())
+        } catch (e: Exception) {
+            false
         }
     }
 
@@ -56,13 +79,15 @@ class HomeViewModel(
     ): List<AppointmentCardUiState> {
         return appointments.map { appt ->
 
-            val (name, subtitle, img) = if (role == UserRole.PATIENT) {
+            val (name, subtitle, img) = if (role == UserRole.PATIENT || role == UserRole.STAFF) {
                 Triple(appt.doctor.name, appt.doctor.details ?: "", appt.doctor.imageUrl)
             } else {
                 Triple(appt.patient.name, appt.patient.details ?: "", appt.patient.imageUrl)
             }
 
-            val isStarted = isAppointmentStarted(appt.dateTime) // Your existing helper
+            val timeStr = parseTime(appt.dateTime)
+
+            val isStarted = isAppointmentStarted(appt.dateTime)
             val realStatus = if (appt.status == AppointmentStatus.UPCOMING && isStarted) {
                 AppointmentStatus.ONGOING
             } else {
@@ -74,7 +99,6 @@ class HomeViewModel(
             } else {
                 isStarted
             }
-            val timeStr = parseTime(appt.dateTime)
 
             AppointmentCardUiState(
                 id = appt.id,
@@ -107,16 +131,16 @@ class HomeViewModel(
         }
     }
 
-    fun isAppointmentStarted(dateString: String): Boolean {
-        return try {
-            val formatter = DateTimeFormatter.ofPattern("EEE, MMM dd, yyyy - hh:mm a", Locale.getDefault())
-            val apptTime = LocalDateTime.parse(dateString, formatter)
-
-            LocalDateTime.now().isAfter(apptTime)
-        } catch (e: Exception) {
-            true
-        }
-    }
+//    fun isAppointmentStarted(dateString: String): Boolean {
+//        return try {
+//            val formatter = DateTimeFormatter.ofPattern("EEE, MMM dd, yyyy - hh:mm a", Locale.getDefault())
+//            val apptTime = LocalDateTime.parse(dateString, formatter)
+//
+//            LocalDateTime.now().isAfter(apptTime)
+//        } catch (e: Exception) {
+//            true
+//        }
+//    }
 
     fun onNextMonth() {
         _uiState.update { it.copy(currentYearMonth = it.currentYearMonth.plusMonths(1)) }
@@ -126,41 +150,33 @@ class HomeViewModel(
         _uiState.update { it.copy(currentYearMonth = it.currentYearMonth.minusMonths(1)) }
     }
 
+    private fun parseTime(date: java.util.Date): String {
+        val localDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
+        val formatter = DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault())
+        return localDate.format(formatter)
+    }
+
+    // Check if Date object is in the past
+    private fun isAppointmentStarted(date: java.util.Date): Boolean {
+        val apptTime = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
+        return LocalDateTime.now().isAfter(apptTime)
+    }
+
+    // Extract LocalDate for grouping
+    private fun parseDateToLocalDate(date: java.util.Date): LocalDate {
+        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+    }
+
+    // Update the grouping logic to use the new helper
     fun getGroupedUiItems(): Map<LocalDate, List<AppointmentCardUiState>> {
         val currentMonth = _uiState.value.currentYearMonth
         return _uiState.value.appointmentItems
             .filter {
                 val date = parseDateToLocalDate(it.rawAppointment.dateTime)
-                date != null && date.month == currentMonth.month && date.year == currentMonth.year
+                date.month == currentMonth.month && date.year == currentMonth.year
             }
-            .groupBy { parseDateToLocalDate(it.rawAppointment.dateTime)!! }
+            .groupBy { parseDateToLocalDate(it.rawAppointment.dateTime) }
             .toSortedMap()
-    }
-
-    private fun checkIsStarted(dateString: String): Boolean {
-        return try {
-            val formatter = DateTimeFormatter.ofPattern(pattern, Locale.getDefault())
-            val apptTime = LocalDateTime.parse(dateString, formatter)
-            LocalDateTime.now().isAfter(apptTime)
-        } catch (e: Exception) { true }
-    }
-
-    private fun parseTime(dateString: String): String {
-        return try {
-            val formatter = DateTimeFormatter.ofPattern(pattern, Locale.getDefault())
-            val date = LocalDateTime.parse(dateString, formatter)
-            val timeFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault())
-            date.format(timeFormat)
-        } catch (e: Exception) {
-            "00:00"
-        }
-    }
-
-    private fun parseDateToLocalDate(dateString: String): LocalDate? {
-        return try {
-            val formatter = DateTimeFormatter.ofPattern(pattern, Locale.getDefault())
-            LocalDateTime.parse(dateString, formatter).toLocalDate()
-        } catch (e: Exception) { null }
     }
 }
 

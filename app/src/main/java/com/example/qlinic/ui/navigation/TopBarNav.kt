@@ -1,7 +1,6 @@
 package com.example.qlinic.ui.navigation
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,7 +15,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
@@ -29,7 +27,8 @@ import com.example.qlinic.R
 @Composable
 fun TopBarNav(
     title: String,
-    onNotificationClick: () -> Unit
+    onNotificationClick: () -> Unit,
+    onLogoClick: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -37,16 +36,17 @@ fun TopBarNav(
         TopAppBar(
             title = { },
             navigationIcon = {
-                Box(
+                IconButton(
+                    onClick = onLogoClick,
                     modifier = Modifier
                         .padding(start = 16.dp)
                         .size(50.dp)
-                        .clip(CircleShape), contentAlignment = Alignment.Center
+                        .clip(CircleShape)
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.ic_logosmall),
                         contentDescription = "Qlinic Logo",
-                        modifier = Modifier.size(50.dp)
+                        modifier = Modifier.size(40.dp)
                     )
                 }
             },
@@ -55,9 +55,7 @@ fun TopBarNav(
                     Icon(
                         painter = painterResource(id = R.drawable.ic_notification),
                         contentDescription = "Notifications",
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .size(24.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             },

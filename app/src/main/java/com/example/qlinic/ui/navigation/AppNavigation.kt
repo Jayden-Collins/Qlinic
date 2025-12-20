@@ -30,6 +30,16 @@ fun AppNavigation() {
         factory = ScheduleViewModelFactory(doctorRepository)
     )
 
+    val onGoHome: () -> Unit = {
+        navController.navigate(Routes.Home.route) {
+            popUpTo(navController.graph.startDestinationId) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     NavHost(navController = navController, startDestination = Routes.Home.route) {
 
         composable(Routes.Home.route) {
@@ -40,14 +50,15 @@ fun AppNavigation() {
             } else if (currentUser.role == UserRole.DOCTOR){
                 "My Appointments"
             } else {
-                "Upcoming Appointments"
+                "All Appointments"
             }
             val factory = HomeViewModelFactory(repository, currentUser)
             viewModel<HomeViewModel>(factory = factory)
 
             MainAppScaffold(
                 navController = navController,
-                screenTitle = dynamicTitle
+                screenTitle = dynamicTitle,
+                onLogoClick = onGoHome
             ) {paddingValues ->
                 HomeScreen(
                     paddingValues = paddingValues,
@@ -58,10 +69,10 @@ fun AppNavigation() {
         }
 
         composable(Routes.Schedule.route) {
-            MainAppScaffold(navController = navController) { paddingValues ->
+            MainAppScaffold(navController = navController,onLogoClick = onGoHome) { paddingValues ->
                 Schedule(
                     paddingValues = paddingValues,
-                    viewModel = scheduleViewModel, // Pass the VM
+                    viewModel = scheduleViewModel,
                     onDoctorClick = { doctorId ->
                         // Navigate to details (we just append the ID for the route)
                         navController.navigate("doctor_details/$doctorId")
@@ -70,7 +81,6 @@ fun AppNavigation() {
             }
         }
 
-        // 3. Doctor Details Route
         composable("doctor_details/{doctorId}") {
             // We reuse the same ViewModel because it holds the 'selectedDoctor' state
             DoctorDetailsScreen(
@@ -80,14 +90,14 @@ fun AppNavigation() {
         }
 
         composable(Routes.Report.route) {
-            MainAppScaffold(navController = navController) {paddingValues ->
-                ReportScreen(paddingValues = paddingValues,)
+            MainAppScaffold(navController = navController,onLogoClick = onGoHome) {paddingValues ->
+                ReportScreen(paddingValues = paddingValues)
             }
         }
 
         composable(Routes.Profile.route) {
-            MainAppScaffold(navController = navController) {paddingValues ->
-                Profile(paddingValues = paddingValues,)
+            MainAppScaffold(navController = navController,onLogoClick = onGoHome) {paddingValues ->
+                Profile(paddingValues = paddingValues)
             }
         }
     }

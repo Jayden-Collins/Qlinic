@@ -4,8 +4,14 @@ import com.example.qlinic.data.model.Appointment
 import com.example.qlinic.data.model.AppointmentStatus
 import com.example.qlinic.data.model.User
 import com.example.qlinic.data.model.UserRole
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MockAppointmentRepository : AppointmentRepository {
+
+    private val dateFormatter = SimpleDateFormat("EEE, MMM dd, yyyy - hh.mm a", Locale.getDefault())
+    private fun String.toDate(): Date = dateFormatter.parse(this) ?: Date()
 
     // Dummy User for Testing
     private val doctorRobinson =
@@ -22,7 +28,7 @@ class MockAppointmentRepository : AppointmentRepository {
     private val allAppointments = mutableListOf(
         Appointment(
             id = "1",
-            dateTime = "Wed, May 22, 2025 - 10.00 AM",
+            dateTime = "Wed, May 22, 2025 - 10.00 AM".toDate(),
             doctor = doctorRobinson,
             patient = patientMonica,
             locationOrRoom = "R001",
@@ -30,7 +36,7 @@ class MockAppointmentRepository : AppointmentRepository {
         ),
         Appointment(
             id = "2",
-            dateTime = "Mon, March 12, 2025 - 11.00 AM",
+            dateTime = "Mon, Mar 12, 2025 - 11.00 AM".toDate(),
             doctor = doctorJohnson,
             patient = patientMonica,
             locationOrRoom = "R003",
@@ -39,7 +45,7 @@ class MockAppointmentRepository : AppointmentRepository {
         // Canceled Appointment (Matches Screenshot 3)
         Appointment(
             id = "3",
-            dateTime = "Wed, May 14, 2025 - 3.00 PM",
+            dateTime = "Wed, May 14, 2025 - 3.00 PM".toDate(),
             doctor = doctorLee,
             patient = patientMonica,
             locationOrRoom = "R002",
@@ -47,7 +53,7 @@ class MockAppointmentRepository : AppointmentRepository {
         ),
         Appointment(
             id = "4",
-            dateTime = "Fri, May 24, 2025 - 09.00 AM",
+            dateTime = "Fri, May 24, 2025 - 09.00 AM".toDate(),
             doctor = doctorRobinson,
             patient = patientJane,
             locationOrRoom = "R004",

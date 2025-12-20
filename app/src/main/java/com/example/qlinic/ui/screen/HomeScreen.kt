@@ -2,14 +2,45 @@ package com.example.qlinic.ui.screen
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
-import androidx.compose.runtime.*
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -144,10 +175,10 @@ fun HomeScreenContent(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(painterResource(id = R.drawable.ic_schedule), null, tint = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.size(60.dp))
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("No appointments in ${state.currentYearMonth.month}", color = MaterialTheme.colorScheme.outlineVariant)
+                            Text("No appointments in ${state.currentYearMonth.month}", color = MaterialTheme.colorScheme.outlineVariant, style = MaterialTheme.typography.labelMedium)
                             Spacer(modifier = Modifier.height(16.dp))
                             if (state.currentUser?.role == UserRole.PATIENT) {
-                                Button(onClick = onNavigateToSchedule) { Text("Book Now") }
+                                Button(onClick = onNavigateToSchedule) { Text("Book Now", style = MaterialTheme.typography.labelMedium) }
                             }
                         }
                     }
@@ -160,8 +191,7 @@ fun HomeScreenContent(
                             stickyHeader {
                                 Text(
                                     text = date.format(DateTimeFormatter.ofPattern("EEEE, dd MMMM", Locale.getDefault())),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.displayMedium,
                                     color = MaterialTheme.colorScheme.onBackground,
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -200,6 +230,28 @@ fun HomeScreenContent(
                                 onActionClick = onAction
                             )
                         }
+
+                        if (state.currentUser?.role == UserRole.PATIENT ) {
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+
+                                    HorizontalDivider(modifier = Modifier.weight(1f),color = MaterialTheme.colorScheme.outline)
+
+                                    Spacer(modifier = Modifier.width(24.dp))
+
+                                    Text(
+                                        text = "Only shown appointments from the last 3 days.",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -215,9 +267,9 @@ fun AppointmentCard(
 ) {
     val (statusColor, statusText) = when (uiItem.displayStatus) {
         AppointmentStatus.UPCOMING -> Pair(MaterialTheme.colorScheme.primary, "Upcoming")
-        AppointmentStatus.ONGOING -> Pair(com.example.qlinic.ui.theme.orange, "On Going") // Use Orange/Amber for active
-        AppointmentStatus.COMPLETED -> Pair(com.example.qlinic.ui.theme.teal, "Completed")
-        AppointmentStatus.CANCELLED -> Pair(com.example.qlinic.ui.theme.red, "Cancelled")
+        AppointmentStatus.ONGOING -> Pair(MaterialTheme.colorScheme.secondary, "On Going")
+        AppointmentStatus.COMPLETED -> Pair(MaterialTheme.colorScheme.tertiary, "Completed")
+        AppointmentStatus.CANCELLED -> Pair(MaterialTheme.colorScheme.error, "Cancelled")
     }
 
     Card(
@@ -265,13 +317,14 @@ fun AppointmentCard(
                     Box(
                         modifier = Modifier
                             .size(80.dp)
-                            .background(MaterialTheme.colorScheme.onPrimary, CircleShape),
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = uiItem.displayName.take(1),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            text = uiItem.displayName.firstOrNull()?.toString()?.uppercase() ?: "?",
+                            style = MaterialTheme.typography.displayMedium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -298,6 +351,20 @@ fun AppointmentCard(
                     }
                 }
             }
+            // PATIENT (Complete)
+            if (currentUserRole == UserRole.PATIENT && uiItem.rawAppointment.status == AppointmentStatus.COMPLETED) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { onActionClick(uiItem.id, "ReBook") },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.outline, // Light Grey
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant // Dark Text
+                    ),
+                    modifier = Modifier.fillMaxWidth() // Full Width
+                ) {
+                    Text("Re-Book",style = MaterialTheme.typography.labelMedium)
+                }
+            }
             // PATIENT & STAFF BUTTONS (Cancel / Reschedule)
             if ((currentUserRole == UserRole.PATIENT || currentUserRole == UserRole.STAFF )&& uiItem.rawAppointment.status == AppointmentStatus.UPCOMING) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -310,7 +377,7 @@ fun AppointmentCard(
                             contentColor = MaterialTheme.colorScheme.onSecondary
                         ),
                         modifier = Modifier.weight(1f)
-                    ) { Text("Cancel") }
+                    ) { Text("Cancel", style = MaterialTheme.typography.labelMedium) }
 
                     Button(
                         onClick = { onActionClick(uiItem.id, "Reschedule") },
@@ -320,7 +387,7 @@ fun AppointmentCard(
                             contentColor = MaterialTheme.colorScheme.onBackground
                         ),
                         modifier = Modifier.weight(1f)
-                    ) { Text("Reschedule") }
+                    ) { Text("Reschedule", style = MaterialTheme.typography.labelMedium) }
                 }
             }
             // DOCTOR BUTTONS (Complete / No Show)
@@ -330,24 +397,24 @@ fun AppointmentCard(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = { onActionClick(uiItem.id, "Complete") },
-                        enabled = !uiItem.isActionEnabled,
+                        enabled = uiItem.isActionEnabled,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         ),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Complete", color = MaterialTheme.colorScheme.onPrimary)
+                        Text("Complete", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelMedium)
                     }
 
                     Button(
                         onClick = { onActionClick(uiItem.id, "NoShow") },
-                        enabled = !uiItem.isActionEnabled,
+                        enabled = uiItem.isActionEnabled,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.error
                         ),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("No Show", color = MaterialTheme.colorScheme.onPrimary)
+                        Text("No Show", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -359,27 +426,26 @@ fun AppointmentCard(
 
                 Button(
                     onClick = { onActionClick(uiItem.id, "Complete") },
-                    enabled = uiItem.isActionEnabled, // <--- DISABLED if in future
+                    enabled = uiItem.isActionEnabled,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
-                        // Optional: Define disabled color explicitly if needed
                         disabledContainerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     ),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Complete", color = MaterialTheme.colorScheme.onPrimary)
+                    Text("Complete", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelMedium)
                 }
 
                 Button(
                     onClick = { onActionClick(uiItem.id, "NoShow") },
-                    enabled = uiItem.isActionEnabled, // <--- DISABLED if in future
+                    enabled = uiItem.isActionEnabled,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                         disabledContainerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     ),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("No Show", color = MaterialTheme.colorScheme.onPrimary)
+                    Text("No Show", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelMedium)
                 }
             }
             // Doctor: Completed & Cancelled (UNDO)
@@ -395,7 +461,7 @@ fun AppointmentCard(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Undo", color = MaterialTheme.colorScheme.onBackground)
+                    Text("Undo", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
