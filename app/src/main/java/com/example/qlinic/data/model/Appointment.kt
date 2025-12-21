@@ -1,31 +1,33 @@
 package com.example.qlinic.data.model
 
+import com.google.firebase.firestore.Exclude
+import java.text.SimpleDateFormat
 import java.util.Date
-
-data class User(
-    val id: String,
-    val name: String,
-    val role: UserRole,
-    val details: String? = null, // e.g., Specialty for doctors, Age for patients
-    val imageUrl: String? = null
-)
-
-//data class Appointment(
-//    val id: String,
-//    val dateTime: String, // Use proper LocalDateTime in real app
-//    val doctor: User,     // The doctor involved
-//    val patient: User,    // The patient involved
-//    val locationOrRoom: String,
-//    val status: AppointmentStatus
-//)
+import java.util.Locale
 
 data class Appointment(
     val appointmentId: String = "",
     val appointmentDate: Date = Date(),
     val symptoms: String = "",
-    val status: String = "Booked", // Booked, Cancelled, Ongoing, No-Show, Completed
-    @JvmField
-    val isNotifSent: Boolean = false,
+    val status: AppointmentStatus = AppointmentStatus.UPCOMING,
+    @JvmField val isNotifSent: Boolean = false,
     val slotId: String = "",
     val patientId: String = "",
-)
+    val roomId: String = "",
+
+    // UI-only properties (not stored in Firestore Appointment collection)
+    @get:Exclude @set:Exclude var patient: Patient? = null,
+    @get:Exclude @set:Exclude var doctor: ClinicStaff? = null,
+    @get:Exclude @set:Exclude var doctorSpecialty: String? = null
+) {
+    // Helper properties to minimize impact on existing UI code
+    @get:Exclude
+    val id: String get() = appointmentId
+
+    @get:Exclude
+    val dateTime: String
+        get() = SimpleDateFormat("EEE, MMM dd, yyyy - hh:mm a", Locale.getDefault()).format(appointmentDate)
+
+    @get:Exclude
+    val locationOrRoom: String get() = roomId
+}

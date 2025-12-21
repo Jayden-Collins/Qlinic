@@ -3,9 +3,9 @@ package com.example.qlinic.ui.viewmodel
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.qlinic.data.model.ClinicStaff
+import com.example.qlinic.data.model.Doctor
 import com.example.qlinic.data.model.Patient
-import com.example.qlinic.data.repository.ClinicStaff
-import com.example.qlinic.data.repository.Doctor
 import com.example.qlinic.data.repository.EditProfileRepository
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
@@ -192,7 +192,7 @@ class EditProfileViewModel(
                 val lastCandidate = updatesInput["LastName"] as? String
                 if (firstCandidate != null || lastCandidate != null) {
                     val newFirst = firstCandidate ?: current.firstName
-                    val newLast = lastCandidate ?: current.lastName ?: ""
+                    val newLast = lastCandidate ?: current.lastName
                     if (newFirst != current.firstName || newLast != current.lastName) {
                         if (repo.isClinicStaffNameTaken(newFirst, newLast, staffId)) {
                             _error.value = "Name already exists"
@@ -248,7 +248,7 @@ class EditProfileViewModel(
                     is String -> v.toIntOrNull() ?: current.yearsOfExp
                     else -> current.yearsOfExp
                 }
-                if (y != null && y != current.yearsOfExp) updates["YearsOfExp"] = y
+                if (y != current.yearsOfExp) updates["YearsOfExp"] = y
 
                 if (updates.isNotEmpty()) {
                     repo.updateDoctorFields(doctorId, updates)

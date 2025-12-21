@@ -241,10 +241,7 @@ fun ProfileScreen(
                 )
 
                 ProfileMenuItem(icon = R.drawable.logout, text = "Log Out", onClick = {
-                    viewModel.logout()
-                    navController.navigate(Routes.USER_SELECTION) {
-                        popUpTo(Routes.USER_SELECTION) { inclusive = true }
-                    }
+                    showLogoutDialog = true
                 }, textColor = Color.Red)
             }
         }

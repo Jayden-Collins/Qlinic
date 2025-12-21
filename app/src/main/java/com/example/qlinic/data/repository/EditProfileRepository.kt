@@ -1,29 +1,12 @@
 package com.example.qlinic.data.repository
 
 import android.net.Uri
+import com.example.qlinic.data.model.ClinicStaff
+import com.example.qlinic.data.model.Doctor
 import com.example.qlinic.data.model.Patient
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
-
-data class ClinicStaff(
-    val id: String = "",
-    val email: String? = null,
-    val firstName: String = "",
-    val lastName: String? = null,
-    val phoneNumber: String? = null,
-    val gender: String? = null,
-    val imageUrl: String? = null,
-    val isActive: Boolean = false
-)
-
-data class Doctor(
-    val id: String = "",
-    val description: String? = null,
-    val specialization: String? = null,
-    val yearsOfExp: Int? = null,
-    val imageUrl: String? = null
-)
 
 class EditProfileRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
@@ -43,19 +26,19 @@ class EditProfileRepository(
 
     // Patient
     suspend fun getPatient(patientId: String): Patient? {
-        val snap = patientsRef.document(patientId).get().await()
-        if (!snap.exists()) return null
+        val snapshot = patientsRef.document(patientId).get().await()
+        if (!snapshot.exists()) return null
 
-        val firstName = snap.getString("FirstName") ?: snap.getString("Firstname") ?: ""
-        val lastName = snap.getString("LastName") ?: snap.getString("Lastname") ?: ""
-        val ic = snap.getString("IC") ?: ""
-        val email = snap.getString("Email") ?: ""
-        val phoneNumber = snap.getString("PhoneNumber")
-            ?: snap.getString("phoneNumber")
-            ?: snap.getString("Phone")
+        val firstName = snapshot.getString("FirstName") ?: snapshot.getString("Firstname") ?: ""
+        val lastName = snapshot.getString("LastName") ?: snapshot.getString("Lastname") ?: ""
+        val ic = snapshot.getString("IC") ?: ""
+        val email = snapshot.getString("Email") ?: ""
+        val phoneNumber = snapshot.getString("PhoneNumber")
+            ?: snapshot.getString("phoneNumber")
+            ?: snapshot.getString("Phone")
             ?: ""
-        val gender = snap.getString("Gender") ?: ""
-        val photoUrl = snap.getString("photoUrl") ?: snap.getString("ImageUrl") ?: ""
+        val gender = snapshot.getString("Gender") ?: ""
+        val imageUrl = snapshot.getString("imageUrl") ?: snapshot.getString("ImageUrl") ?: ""
 
         return Patient(
             firstName = firstName,
@@ -64,7 +47,7 @@ class EditProfileRepository(
             email = email,
             phoneNumber = phoneNumber,
             gender = gender,
-            photoUrl = photoUrl
+            imageUrl = imageUrl
         )
     }
 
@@ -128,29 +111,30 @@ class EditProfileRepository(
 
     // ClinicStaff
     suspend fun getClinicStaff(staffId: String): ClinicStaff? {
-        val snap = staffRef.document(staffId).get().await()
-        if (!snap.exists()) return null
+        val snapshot = staffRef.document(staffId).get().await()
+        if (!snapshot.exists()) return null
         return ClinicStaff(
-            id = staffId,
-            email = snap.getString("Email"),
-            firstName = snap.getString("FirstName") ?: snap.getString("Firstname") ?: "",
-            lastName = snap.getString("LastName") ?: snap.getString("Lastname"),
-            phoneNumber = snap.getString("PhoneNumber") ?: snap.getString("Phone"),
-            gender = snap.getString("Gender"),
-            imageUrl = snap.getString("photoUrl") ?: snap.getString("ImageUrl"),
-            isActive = snap.getBoolean("isActive") ?: false
+            staffId = staffId,
+            email = snapshot.getString("Email") ?: "",
+            firstName = snapshot.getString("FirstName") ?: "",
+            lastName = snapshot.getString("LastName") ?: "",
+            phoneNumber = snapshot.getString("PhoneNumber") ?: "",
+            gender = snapshot.getString("Gender") ?: "",
+            imageUrl = snapshot.getString("ImageUrl") ?: "",
+            role = snapshot.getString("Role") ?: "",
+            isActive = snapshot.getBoolean("isActive") ?: false
         )
     }
     // Doctor (additional details stored in Doctor collection)
     suspend fun getDoctor(doctorId: String): Doctor? {
-        val snap = doctorRef.document(doctorId).get().await()
-        if (!snap.exists()) return null
+        val snapshot = doctorRef.document(doctorId).get().await()
+        if (!snapshot.exists()) return null
         return Doctor(
             id = doctorId,
-            description = snap.getString("Description"),
-            specialization = snap.getString("Specialization"),
-            yearsOfExp = snap.getLong("YearsOfExp")?.toInt(),
-            imageUrl = snap.getString("photoUrl") ?: snap.getString("ImageUrl")
+            description = snapshot.getString("Description") ?: "",
+            specialization = snapshot.getString("Specialization") ?: "",
+            yearsOfExp = snapshot.getLong("YearsOfExp")?.toInt() ?: 0,
+            room = snapshot.getString("Room") ?: ""
         )
     }
 

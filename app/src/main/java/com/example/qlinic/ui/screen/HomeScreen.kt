@@ -17,20 +17,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.qlinic.R
 import com.example.qlinic.data.model.AppointmentStatus
-import com.example.qlinic.data.model.TestUsers
 import com.example.qlinic.data.model.UserRole
-import com.example.qlinic.data.repository.MockAppointmentRepository
-import com.example.qlinic.ui.theme.QlinicTheme
+import com.example.qlinic.ui.theme.*
 import com.example.qlinic.ui.ui_state.AppointmentCardUiState
 import com.example.qlinic.ui.ui_state.HomeUiState
 import com.example.qlinic.ui.viewmodel.HomeViewModel
-import com.example.qlinic.ui.viewmodel.HomeViewModelFactory
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -146,7 +142,7 @@ fun HomeScreenContent(
                             Spacer(modifier = Modifier.height(16.dp))
                             Text("No appointments in ${state.currentYearMonth.month}", color = MaterialTheme.colorScheme.outlineVariant)
                             Spacer(modifier = Modifier.height(16.dp))
-                            if (state.currentUser?.role == UserRole.PATIENT) {
+                            if (state.userRole == UserRole.PATIENT) {
                                 Button(onClick = onNavigateToSchedule) { Text("Book Now") }
                             }
                         }
@@ -172,7 +168,7 @@ fun HomeScreenContent(
                             items(uiItems) { uiItem ->
                                 TimelineAppointmentRow(
                                     uiItem = uiItem,
-                                    currentUserRole = state.currentUser?.role ?: UserRole.PATIENT,
+                                    currentUserRole = state.userRole ?: UserRole.PATIENT,
                                     onActionClick = onAction
                                 )
                             }
@@ -196,7 +192,7 @@ fun HomeScreenContent(
                         items(items = state.appointmentItems, key = { it.id }) { uiItem ->
                             AppointmentCard(
                                 uiItem = uiItem,
-                                currentUserRole = state.currentUser?.role ?: UserRole.PATIENT,
+                                currentUserRole = state.userRole ?: UserRole.PATIENT,
                                 onActionClick = onAction
                             )
                         }
@@ -215,9 +211,10 @@ fun AppointmentCard(
 ) {
     val (statusColor, statusText) = when (uiItem.displayStatus) {
         AppointmentStatus.UPCOMING -> Pair(MaterialTheme.colorScheme.primary, "Upcoming")
-        AppointmentStatus.ONGOING -> Pair(com.example.qlinic.ui.theme.orange, "On Going") // Use Orange/Amber for active
-        AppointmentStatus.COMPLETED -> Pair(com.example.qlinic.ui.theme.teal, "Completed")
-        AppointmentStatus.CANCELLED -> Pair(com.example.qlinic.ui.theme.red, "Cancelled")
+        AppointmentStatus.ONGOING -> Pair(orange, "On Going") // Use Orange/Amber for active
+        AppointmentStatus.COMPLETED -> Pair(teal, "Completed")
+        AppointmentStatus.CANCELLED -> Pair(red, "Cancelled")
+        AppointmentStatus.NO_SHOW -> Pair(red, "No Show")
     }
 
     Card(
@@ -291,7 +288,7 @@ fun AppointmentCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = uiItem.rawAppointment.locationOrRoom,
+                            text = uiItem.rawAppointment.roomId,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -299,7 +296,7 @@ fun AppointmentCard(
                 }
             }
             // PATIENT & STAFF BUTTONS (Cancel / Reschedule)
-            if ((currentUserRole == UserRole.PATIENT || currentUserRole == UserRole.STAFF )&& uiItem.rawAppointment.status == AppointmentStatus.UPCOMING) {
+            if ((currentUserRole == UserRole.PATIENT || currentUserRole == UserRole.STAFF) && uiItem.rawAppointment.status == AppointmentStatus.UPCOMING) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
@@ -479,23 +476,5 @@ fun TimelineAppointmentRow(
                 onActionClick = onActionClick
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenContentPreview() {
-    val dummyRepository = MockAppointmentRepository()
-    val currentUser = TestUsers.current
-
-    val homeViewModel = HomeViewModelFactory(dummyRepository, currentUser)
-        .create(HomeViewModel::class.java)
-
-    QlinicTheme {
-        HomeScreen(
-            paddingValues = PaddingValues(0.dp),
-            homeViewModel = homeViewModel,
-            onNavigateToSchedule = {}
-        )
     }
 }

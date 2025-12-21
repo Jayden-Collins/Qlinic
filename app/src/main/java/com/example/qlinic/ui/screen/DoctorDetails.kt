@@ -36,14 +36,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.qlinic.R
-import com.example.qlinic.data.model.DoctorProfile
-import com.example.qlinic.ui.theme.QlinicTheme
+import com.example.qlinic.data.model.ClinicStaff
+import com.example.qlinic.data.model.Doctor
 import com.example.qlinic.ui.viewmodel.ScheduleViewModel
 
 
@@ -53,9 +52,11 @@ fun DoctorDetailsScreen(
     onBackClick: () -> Unit
 ) {
     val doctor by viewModel.selectedDoctor.collectAsState()
+    val staff by viewModel.selectedStaff.collectAsState()
 
     DoctorDetailsLayout(
         doctor = doctor,
+        staff = staff,
         onBackClick = onBackClick
     )
 }
@@ -63,7 +64,8 @@ fun DoctorDetailsScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DoctorDetailsLayout(
-    doctor: DoctorProfile?,
+    doctor: Doctor?,
+    staff: ClinicStaff?,
     onBackClick: () -> Unit
 ) {
     Scaffold(
@@ -103,8 +105,8 @@ fun DoctorDetailsLayout(
             }
         }
     ) { padding ->
-        if (doctor != null) {
-            DoctorDetailsContent(doctor = doctor, padding = padding)
+        if (doctor != null && staff != null) {
+            DoctorDetailsContent(doctor = doctor, staff = staff, padding = padding)
         } else {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Doctor not found",
@@ -117,7 +119,7 @@ fun DoctorDetailsLayout(
 }
 
 @Composable
-fun DoctorDetailsContent(doctor: DoctorProfile, padding: PaddingValues) {
+fun DoctorDetailsContent(doctor: Doctor, staff: ClinicStaff, padding: PaddingValues) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -130,7 +132,7 @@ fun DoctorDetailsContent(doctor: DoctorProfile, padding: PaddingValues) {
         // Image
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
-                .data(doctor.imageUrl)
+                .data(staff.imageUrl)
                 .crossfade(true)
                 .build(),
             contentDescription = "Doctor",
@@ -147,8 +149,10 @@ fun DoctorDetailsContent(doctor: DoctorProfile, padding: PaddingValues) {
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.Start
         ) {
+            val doctorName = "Dr. ${staff.firstName} ${staff.lastName}"
+
             Text(
-                text = doctor.name,
+                text = doctorName,
                 style = MaterialTheme.typography.displayLarge
             )
 
@@ -156,7 +160,7 @@ fun DoctorDetailsContent(doctor: DoctorProfile, padding: PaddingValues) {
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = doctor.specialty,
+                    text = doctor.specialization,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     fontSize = 16.sp
@@ -203,36 +207,5 @@ fun DoctorDetailsContent(doctor: DoctorProfile, padding: PaddingValues) {
                 textAlign = TextAlign.Justify
             )
         }
-        /**Spacer(modifier = Modifier.height(24.dp))
-
-        // Working Time
-        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
-            Text(text = "Working Time", style = MaterialTheme.typography.displayLarge, fontSize = 20.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "Monday-Friday, 9am - 2pm", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-            Text(text = "Monday-Friday, 3pm - 10pm", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-        }**/
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DoctorDetailsScreenPreview() {
-    val dummyDoctor = DoctorProfile(
-        id = "S008",
-        name = "Dr. David Patel",
-        specialty = "Cardiology",
-        room = "R004",
-        imageUrl = "",
-        description = "Dr. David Patel, a dedicated cardiologist, brings a wealth of experience to Golden Gate Cardiology Center. Head of Cardiology. Graduated from UM with honours.",
-        yearsOfExp = 18
-    )
-
-    QlinicTheme {
-        // Call the LAYOUT, not the Screen
-        DoctorDetailsLayout(
-            doctor = dummyDoctor,
-            onBackClick = {}
-        )
     }
 }

@@ -5,11 +5,14 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.qlinic.data.model.Appointment
 import com.example.qlinic.data.model.AppointmentStatus
-import com.example.qlinic.data.model.User
+import com.example.qlinic.data.model.SessionManager
+import com.example.qlinic.data.model.Slot
 import com.example.qlinic.data.model.UserRole
 import com.example.qlinic.data.repository.AppointmentRepository
 import com.example.qlinic.ui.ui_state.AppointmentCardUiState
 import com.example.qlinic.ui.ui_state.HomeUiState
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,13 +22,28 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.collections.map
 
 class HomeViewModel(
     private val repository: AppointmentRepository,
-    private val currentUser: User
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(HomeUiState(currentUser = currentUser))
+    // Helper to resolve the current user's ID and Role from SessionManager
+    private val currentUserId: String = sessionManager.getSavedUserId() ?: sessionManager.getSavedStaffId() ?: ""
+    private val currentUserRole: UserRole = when {
+        sessionManager.getSavedUserType() == "PATIENT" -> UserRole.PATIENT
+        sessionManager.getSavedRole()?.uppercase() == "DOCTOR" -> UserRole.DOCTOR
+        else -> UserRole.STAFF
+    }
+
+    private val _uiState = MutableStateFlow(
+        HomeUiState(
+            userId = currentUserId,
+            userRole = currentUserRole
+        )
+    )
+
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
     private val pattern = "EEE, MMM dd, yyyy - hh:mm a"
 
@@ -38,13 +56,13 @@ class HomeViewModel(
         _uiState.update { it.copy(isLoading = true) }
 
         viewModelScope.launch {
-            val rawData = when (currentUser.role) {
-                UserRole.PATIENT -> repository.getAppointmentsForPatient(currentUser.id, status)
-                UserRole.DOCTOR -> repository.getAppointmentsForDoctor(currentUser.id, status)
+            val rawData = when (currentUserRole) {
+                UserRole.PATIENT -> repository.getAppointmentsForPatient(currentUserId, status)
+                UserRole.DOCTOR -> repository.getAppointmentsForDoctor(currentUserId, status)
                 UserRole.STAFF -> repository.getAllAppointments(status)
             }
 
-            val uiItems = mapToUiState(rawData, currentUser.role)
+            val uiItems = mapToUiState(rawData, currentUserRole)
 
             _uiState.update { it.copy(isLoading = false, appointmentItems = uiItems) }
         }
@@ -57,9 +75,11 @@ class HomeViewModel(
         return appointments.map { appt ->
 
             val (name, subtitle, img) = if (role == UserRole.PATIENT) {
-                Triple(appt.doctor.name, appt.doctor.details ?: "", appt.doctor.imageUrl)
+                val doc = appt.doctor
+                Triple("Dr. ${doc?.firstName} ${doc?.lastName}", appt.doctorSpecialty ?: "", doc?.imageUrl)
             } else {
-                Triple(appt.patient.name, appt.patient.details ?: "", appt.patient.imageUrl)
+                val pat = appt.patient
+                Triple("${pat?.firstName} ${pat?.lastName}", pat?.gender ?: "", pat?.imageUrl)
             }
 
             val isStarted = isAppointmentStarted(appt.dateTime) // Your existing helper
@@ -166,13 +186,9 @@ class HomeViewModel(
 
 class HomeViewModelFactory(
     private val repository: AppointmentRepository,
-    private val user: User
+    private val sessionManager: SessionManager
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return HomeViewModel(repository, user) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
+        return HomeViewModel(repository, sessionManager) as T
     }
 }

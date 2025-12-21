@@ -122,7 +122,7 @@ fun EditProfileScreen(
                 phone = viewModel.extractPhoneNumberForDisplay(p.phoneNumber)
                 ic = p.ic ?: ""
                 gender = p.gender ?: ""
-                imageUrl = p.photoUrl
+                imageUrl = p.imageUrl
             }
             "staff", "doctor" -> {
                 staffState?.let { s ->

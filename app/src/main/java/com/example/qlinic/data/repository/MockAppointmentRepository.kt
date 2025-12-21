@@ -2,7 +2,6 @@ package com.example.qlinic.data.repository
 
 import com.example.qlinic.data.model.Appointment
 import com.example.qlinic.data.model.AppointmentStatus
-import com.example.qlinic.data.model.User
 import com.example.qlinic.data.model.UserRole
 
 //class MockAppointmentRepository : AppointmentRepository {

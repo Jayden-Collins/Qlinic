@@ -1,11 +1,11 @@
 package com.example.qlinic.ui.viewmodel
-/**
- * This is a mock up View Model solely build for testing, replace with desmond eh
- **/
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.qlinic.data.model.DoctorProfile
+import com.example.qlinic.data.model.ClinicStaff
+import com.example.qlinic.data.model.Doctor
+import com.example.qlinic.data.repository.ClinicStaffRepository
 import com.example.qlinic.data.repository.DoctorRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,8 +16,13 @@ import kotlinx.coroutines.launch
 // UI State for the list screen
 data class ScheduleUiState(
     val isLoading: Boolean = false,
-    val doctors: List<DoctorProfile> = emptyList(),
+    val doctors: List<DoctorListItem> = emptyList(),
     val searchQuery: String = ""
+)
+
+data class DoctorListItem(
+    val doctor: Doctor,
+    val staff: ClinicStaff
 )
 
 class ScheduleViewModel(
@@ -28,8 +33,13 @@ class ScheduleViewModel(
     val uiState: StateFlow<ScheduleUiState> = _uiState.asStateFlow()
 
     // Holds the detail of the selected doctor
-    private val _selectedDoctor = MutableStateFlow<DoctorProfile?>(null)
-    val selectedDoctor: StateFlow<DoctorProfile?> = _selectedDoctor.asStateFlow()
+    private val _selectedDoctor = MutableStateFlow<Doctor?>(null)
+    val selectedDoctor: StateFlow<Doctor?> = _selectedDoctor.asStateFlow()
+
+    private val _selectedStaff = MutableStateFlow<ClinicStaff?>(null)
+    val selectedStaff: StateFlow<ClinicStaff?> = _selectedStaff.asStateFlow()
+
+    private val clinicStaffRepository = ClinicStaffRepository()
 
     init {
         loadDoctors()
@@ -39,13 +49,16 @@ class ScheduleViewModel(
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             val doctors = repository.getAllDoctors()
-            _uiState.update { it.copy(isLoading = false, doctors = doctors) }
+            val listItems = doctors.mapNotNull { doctor ->
+                val staff = clinicStaffRepository.getStaffMember(doctor.id)
+                if (staff != null) DoctorListItem(doctor, staff) else null
+            }
+            _uiState.update { it.copy(isLoading = false, doctors = listItems) }
         }
     }
 
     fun onSearchQueryChanged(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
-        // In a real app, you would filter the list here
     }
 
     // Called when user clicks a card
@@ -53,6 +66,11 @@ class ScheduleViewModel(
         viewModelScope.launch {
             val doctor = repository.getDoctorById(doctorId)
             _selectedDoctor.value = doctor
+            if (doctor != null) {
+                _selectedStaff.value = clinicStaffRepository.getStaffMember(doctor.id)
+            } else {
+                _selectedStaff.value = null
+            }
         }
     }
 }

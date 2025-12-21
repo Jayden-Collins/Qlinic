@@ -1,24 +1,24 @@
 package com.example.qlinic.data.repository
 
-import com.example.qlinic.data.model.DoctorProfile
+import com.example.qlinic.data.model.Doctor
 import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
 interface DoctorRepository {
-    suspend fun getAllDoctors(): List<DoctorProfile>
-    suspend fun getDoctorById(id: String): DoctorProfile?
+    suspend fun getAllDoctors(): List<Doctor>
+    suspend fun getDoctorById(id: String): Doctor?
 }
 
 class FirestoreDoctorRepository : DoctorRepository {
 
     private val db = FirebaseFirestore.getInstance()
 
-    override suspend fun getAllDoctors(): List<DoctorProfile> {
+    override suspend fun getAllDoctors(): List<Doctor> {
         return try {
             val doctorSnapshot = db.collection("Doctor").get().await()
 
-            val profiles = mutableListOf<DoctorProfile>()
+            val profiles = mutableListOf<Doctor>()
 
             for (doc in doctorSnapshot.documents) {
                 val docId = doc.getString("DoctorID") ?: ""
@@ -40,12 +40,10 @@ class FirestoreDoctorRepository : DoctorRepository {
                         val imageUrl = staffDoc.getString("ImageUrl")
 
                         profiles.add(
-                            DoctorProfile(
+                            Doctor(
                                 id = docId,
-                                name = "Dr. $firstName $lastName",
-                                specialty = specialty,
+                                specialization = specialty,
                                 room = room,
-                                imageUrl = imageUrl,
                                 description = desc,
                                 yearsOfExp = exp
                             )
@@ -60,7 +58,7 @@ class FirestoreDoctorRepository : DoctorRepository {
         }
     }
 
-    override suspend fun getDoctorById(id: String): DoctorProfile? {
+    override suspend fun getDoctorById(id: String): Doctor? {
         // Fetch all and find one (Optimized way would be direct queries)
         return getAllDoctors().find { it.id == id }
     }

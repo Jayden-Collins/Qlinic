@@ -1,7 +1,5 @@
 package com.example.qlinic.ui.screen
-/**
- * This is a mock up Schedule Screen solely build for testing, replace with desmond eh
- **/
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.qlinic.R
-import com.example.qlinic.data.model.DoctorProfile
+import com.example.qlinic.ui.viewmodel.DoctorListItem
 import com.example.qlinic.ui.viewmodel.ScheduleViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,12 +84,12 @@ fun Schedule(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(uiState.doctors) { doctor ->
+                items(uiState.doctors) { item ->
                     DoctorListCard(
-                        doctor = doctor,
+                        item = item,
                         onClick = {
-                            viewModel.selectDoctor(doctor.id) // Load details
-                            onDoctorClick(doctor.id) // Navigate
+                            viewModel.selectDoctor(item.doctor.id) // Load details
+                            onDoctorClick(item.doctor.id) // Navigate
                         }
                     )
                 }
@@ -101,7 +99,11 @@ fun Schedule(
 }
 
 @Composable
-fun DoctorListCard(doctor: DoctorProfile, onClick: () -> Unit) {
+fun DoctorListCard(item: DoctorListItem, onClick: () -> Unit) {
+    val doctor = item.doctor
+    val staff = item.staff
+    val doctorName = "Dr. ${staff.firstName} ${staff.lastName}"
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -116,7 +118,7 @@ fun DoctorListCard(doctor: DoctorProfile, onClick: () -> Unit) {
             // Image
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(doctor.imageUrl)
+                    .data(staff.imageUrl)
                     .crossfade(true)
                     .build(),
                 contentDescription = "Doctor Image",
@@ -131,8 +133,8 @@ fun DoctorListCard(doctor: DoctorProfile, onClick: () -> Unit) {
 
             // Details
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = doctor.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(text = doctor.specialty, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                Text(text = doctorName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(text = doctor.specialization, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
 
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -159,4 +161,3 @@ fun DoctorListCard(doctor: DoctorProfile, onClick: () -> Unit) {
         }
     }
 }
-

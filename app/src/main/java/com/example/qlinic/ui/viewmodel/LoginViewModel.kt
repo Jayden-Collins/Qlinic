@@ -7,12 +7,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.qlinic.data.model.SessionManager
 import com.example.qlinic.data.repository.ClinicStaffRepository
-import com.example.qlinic.data.repository.PatientRepository
+import com.example.qlinic.data.repository.PatientLoginRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -50,7 +48,7 @@ class LoginViewModel (application: Application): AndroidViewModel(application) {
     private val sessionManager = SessionManager(application.applicationContext)
 
     // Create instances directly (no dependency injection for now)
-    private val patientRepository = PatientRepository()
+    private val patientRepository = PatientLoginRepository()
     private val clinicStaffRepository = ClinicStaffRepository()
 
     var uiState by mutableStateOf(LoginUiState())
@@ -86,8 +84,6 @@ class LoginViewModel (application: Application): AndroidViewModel(application) {
     // helper suspend wrappers
     private suspend fun loginPatientSuspend(identifier: String, password: String): String =
         patientRepository.loginPatient(identifier, password)
-
-
     private suspend fun loginStaffSuspend(
         identifier: String,
         password: String

@@ -156,15 +156,12 @@ fun LoginScreen(
         )
 
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
+            modifier = Modifier.fillMaxWidth()
         ){
             Image(
                 painter = painterResource(id = R.drawable.app_logo),
                 contentDescription = "App Logo",
-                modifier = Modifier
-                    .size(400.dp)
-                    .padding(top = 24.dp)
+                modifier = Modifier.size(400.dp)
             )
         }
 

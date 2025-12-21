@@ -3,19 +3,17 @@ package com.example.qlinic.data.repository
 import android.util.Log
 import com.example.qlinic.data.model.Appointment
 import com.example.qlinic.data.model.AppointmentStatus
+import com.example.qlinic.data.model.Patient
+import com.example.qlinic.data.model.ClinicStaff
 import com.example.qlinic.data.model.Slot
-import com.example.qlinic.data.model.User
-import com.example.qlinic.data.model.UserRole
 import com.example.qlinic.utils.getDayStartAndEnd
-import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
-import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 interface AppointmentRepository {
     suspend fun getAppointmentsForPatient(patientId: String, status: AppointmentStatus): List<Appointment>
@@ -29,15 +27,25 @@ class FirestoreAppointmentRepository : AppointmentRepository {
 
     private val db = FirebaseFirestore.getInstance()
     private val appointmentsCollection = db.collection("Appointment")
-    private val dateFormatter = SimpleDateFormat("EEE, MMM dd, yyyy - hh:mm a", Locale.getDefault())
 
     private fun mapStatus(status: String?): AppointmentStatus {
         return when (status) {
-            "Booked" -> AppointmentStatus.UPCOMING
-            "OnGoing" -> AppointmentStatus.ONGOING
-            "Completed" -> AppointmentStatus.COMPLETED
-            "Cancelled" -> AppointmentStatus.CANCELLED
+            "Booked", "Upcoming", "UPCOMING" -> AppointmentStatus.UPCOMING
+            "OnGoing", "Ongoing", "ONGOING" -> AppointmentStatus.ONGOING
+            "Completed", "COMPLETED" -> AppointmentStatus.COMPLETED
+            "Cancelled", "CANCELLED" -> AppointmentStatus.CANCELLED
+            "No Show", "NO_SHOW" -> AppointmentStatus.NO_SHOW
             else -> AppointmentStatus.UPCOMING
+        }
+    }
+
+    private fun mapStatusToString(status: AppointmentStatus): String {
+        return when (status) {
+            AppointmentStatus.UPCOMING -> "Booked"
+            AppointmentStatus.ONGOING -> "OnGoing"
+            AppointmentStatus.COMPLETED -> "Completed"
+            AppointmentStatus.CANCELLED -> "Cancelled"
+            AppointmentStatus.NO_SHOW -> "No Show"
         }
     }
 
@@ -53,16 +61,16 @@ class FirestoreAppointmentRepository : AppointmentRepository {
 
             if (querySnapshot.isEmpty) {
                 val appointmentId = appointmentsCollection.document().id
-                val newAppointment = Appointment(
-                    appointmentId = appointmentId,
-                    appointmentDate = date,
-                    symptoms = symptoms,
-                    status = "Booked",
-                    isNotifSent = false,
-                    slotId = slot.SlotID,
-                    patientId = patientId,
+                val data = hashMapOf(
+                    "appointmentId" to appointmentId,
+                    "appointmentDate" to date,
+                    "symptoms" to symptoms,
+                    "status" to "Booked",
+                    "isNotifSent" to false,
+                    "slotId" to slot.SlotID,
+                    "patientId" to patientId
                 )
-                appointmentsCollection.document(appointmentId).set(newAppointment).await()
+                appointmentsCollection.document(appointmentId).set(data).await()
                 true
             } else {
                 false
@@ -73,272 +81,66 @@ class FirestoreAppointmentRepository : AppointmentRepository {
         }
     }
 
-    override suspend fun getAppointmentsForPatient(patientId: String, status: AppointmentStatus): List<Appointment> = coroutineScope {
-        try {
-            val apptSnapshot = db.collection("Appointment")
-                .whereEqualTo("patientId", patientId)
-                .get()
-                .await()
-
-            val tasks = apptSnapshot.documents.map {
-                async {
-                    try {
-                        val apptData = it.data ?: return@async null
-                        val dbStatus = mapStatus(apptData["status"] as? String)
-
-                        if (dbStatus != status) return@async null
-
-                        val timestamp = apptData["appointmentDate"] as? Timestamp
-                        val dateDate = timestamp?.toDate()
-
-                        val dateString = if (dateDate != null) {
-                            dateFormatter.format(dateDate)
-                        } else {
-                            "Unknown Date"
-                        }
-
-                        val slotId = apptData["slotId"] as? String ?: ""
-                        if (slotId.isEmpty()) return@async null
-
-                        val slotDoc = db.collection("Slot").document(slotId).get().await()
-                        val doctorDocId = slotDoc.getString("DoctorID") ?: ""
-
-                        val doctorDoc = db.collection("Doctor").document(doctorDocId).get().await()
-                        val roomID = doctorDoc.getString("RoomID") ?: "Unknown Room"
-                        val staffRefId = doctorDoc.getString("DoctorID") ?: ""
-
-                        val staffDoc = db.collection("ClinicStaff").document(staffRefId).get().await()
-                        val firstName = staffDoc.getString("FirstName") ?: "Doctor"
-                        val lastName = staffDoc.getString("LastName") ?: ""
-                        val fullName = "Dr. $firstName $lastName"
-
-                        val doctorImageUrl = staffDoc.getString("ImageUrl")
-
-                        val pId = apptData["patientId"] as? String ?: ""
-                        val patientDoc = db.collection("Patient").document(pId).get().await()
-
-                        val realPatient = User(
-                            id = pId,
-                            name = "${patientDoc.getString("FirstName")} ${patientDoc.getString("LastName")}",
-                            role = UserRole.PATIENT,
-                            details = patientDoc.getString("Gender") ?: ""
-                        )
-
-                        val realDoctor = User(
-                            id = doctorDocId,
-                            name = fullName,
-                            role = UserRole.DOCTOR,
-                            details = doctorDoc.getString("Specialization") ?: "Specialist",
-                            imageUrl = doctorImageUrl
-                        )
-
-                        Pair(
-                            Appointment(
-                                id = it.id,
-                                dateTime = dateString,
-                                locationOrRoom = roomID,
-                                status = dbStatus,
-                                patient = realPatient,
-                                doctor = realDoctor
-                            ),
-                            dateDate
-                        )
-
-                    } catch (e: Exception) {
-                        Log.e("FirestoreRepo", "Error linking data for appt: ${it.id}", e)
-                        null
-                    }
-                }
-            }
-
-            val results = tasks.awaitAll().filterNotNull()
-
-            if (status == AppointmentStatus.UPCOMING) {
-                results.sortedBy { it.second }.map { it.first }
-            } else {
-                results.sortedByDescending { it.second }.map { it.first }
-            }
-
-        } catch (e: Exception) {
-            Log.e("FirestoreRepo", "Error fetching appointments", e)
-            emptyList()
-        }
+    override suspend fun getAppointmentsForPatient(patientId: String, status: AppointmentStatus): List<Appointment> {
+        val snapshot = appointmentsCollection
+            .whereEqualTo("patientId", patientId)
+            .get()
+            .await()
+        return fetchAndLink(snapshot.documents, status)
     }
 
-    override suspend fun getAllAppointments(status: AppointmentStatus): List<Appointment> = coroutineScope {
-        try {
-            val apptSnapshot = db.collection("Appointment")
-                .get()
-                .await()
-
-            val tasks = apptSnapshot.documents.map {
-                async {
-                    try {
-                        val apptData = it.data ?: return@async null
-                        val dbStatus = mapStatus(apptData["status"] as? String)
-
-                        if (dbStatus != status) return@async null
-
-                        val timestamp = apptData["appointmentDate"] as? Timestamp
-                        val dateDate = timestamp?.toDate()
-
-                        val dateString = if (dateDate != null) {
-                            dateFormatter.format(dateDate)
-                        } else {
-                            "Unknown Date"
-                        }
-
-                        val slotId = apptData["slotId"] as? String ?: ""
-                        if (slotId.isEmpty()) return@async null
-
-                        val slotDoc = db.collection("Slot").document(slotId).get().await()
-                        val doctorDocId = slotDoc.getString("DoctorID") ?: ""
-
-                        val doctorDoc = db.collection("Doctor").document(doctorDocId).get().await()
-                        val roomID = doctorDoc.getString("RoomID") ?: "Unknown Room"
-                        val staffRefId = doctorDoc.getString("DoctorID") ?: ""
-
-                        val staffDoc = db.collection("ClinicStaff").document(staffRefId).get().await()
-                        val firstName = staffDoc.getString("FirstName") ?: "Doctor"
-                        val lastName = staffDoc.getString("LastName") ?: ""
-                        val fullName = "Dr. $firstName $lastName"
-
-                        val doctorImageUrl = staffDoc.getString("ImageUrl")
-
-                        val pId = apptData["patientId"] as? String ?: ""
-                        val patientDoc = db.collection("Patient").document(pId).get().await()
-
-                        val realPatient = User(
-                            id = pId,
-                            name = "${patientDoc.getString("FirstName")} ${patientDoc.getString("LastName")}",
-                            role = UserRole.PATIENT,
-                            details = patientDoc.getString("Gender") ?: ""
-                        )
-
-                        val realDoctor = User(
-                            id = doctorDocId,
-                            name = fullName,
-                            role = UserRole.DOCTOR,
-                            details = doctorDoc.getString("Specialization") ?: "Specialist",
-                            imageUrl = doctorImageUrl
-                        )
-
-                        Pair(
-                            Appointment(
-                                id = it.id,
-                                dateTime = dateString,
-                                locationOrRoom = roomID,
-                                status = dbStatus,
-                                patient = realPatient,
-                                doctor = realDoctor
-                            ),
-                            dateDate
-                        )
-
-                    } catch (e: Exception) {
-                        Log.e("FirestoreRepo", "Error linking data for appt: ${it.id}", e)
-                        null
-                    }
-                }
-            }
-
-            val results = tasks.awaitAll().filterNotNull()
-
-            if (status == AppointmentStatus.UPCOMING) {
-                results.sortedBy { it.second }.map { it.first }
-            } else {
-                results.sortedByDescending { it.second }.map { it.first }
-            }
-
-        } catch (e: Exception) {
-            Log.e("FirestoreRepo", "Error fetching all appointments", e)
-            emptyList()
-        }
+    override suspend fun getAllAppointments(status: AppointmentStatus): List<Appointment> {
+        val snapshot = appointmentsCollection.get().await()
+        return fetchAndLink(snapshot.documents, status)
     }
 
-    override suspend fun getAppointmentsForDoctor(doctorId: String, status: AppointmentStatus): List<Appointment> = coroutineScope {
+    override suspend fun getAppointmentsForDoctor(doctorId: String, status: AppointmentStatus): List<Appointment> {
+        val slotsSnapshot = db.collection("Slot").whereEqualTo("DoctorID", doctorId).get().await()
+        val slotIds = slotsSnapshot.documents.map { it.id }
+        
+        if (slotIds.isEmpty()) return emptyList()
 
-        val dbStatusString = when(status) {
-            AppointmentStatus.UPCOMING -> "Booked"
-            AppointmentStatus.COMPLETED -> "Completed"
-            AppointmentStatus.CANCELLED -> "Cancelled"
-            AppointmentStatus.ONGOING -> "Ongoing"
-        }
+        val snapshot = appointmentsCollection
+            .whereEqualTo("status", mapStatusToString(status))
+            .get()
+            .await()
+        
+        val filteredDocs = snapshot.documents.filter { slotIds.contains(it.getString("slotId")) }
+        return fetchAndLink(filteredDocs)
+    }
 
-        try {
-            val mySlotsSnapshot = db.collection("Slot")
-                .whereEqualTo("DoctorID", doctorId)
-                .get()
-                .await()
+    private suspend fun fetchAndLink(docs: List<DocumentSnapshot>, target: AppointmentStatus? = null): List<Appointment> = coroutineScope {
+        docs.map { doc ->
+            async {
+                val statusStr = doc.getString("status")
+                val dbStatus = mapStatus(statusStr)
+                
+                if (target != null && dbStatus != target) return@async null
 
-            val mySlotIds = mySlotsSnapshot.documents.map { it.id }.toSet()
-            if (mySlotIds.isEmpty()) return@coroutineScope emptyList()
+                val appt = doc.toObject(Appointment::class.java)?.copy(
+                    appointmentId = doc.id,
+                    status = dbStatus
+                ) ?: return@async null
 
-            val apptSnapshot = db.collection("Appointment")
-                .whereEqualTo("status", dbStatusString)
-                .get()
-                .await()
+                // Fetch Patient
+                appt.patient = db.collection("Patient").document(appt.patientId).get().await().toObject(Patient::class.java)
 
-            val tasks = apptSnapshot.documents.mapNotNull {
-                val apptData = it.data ?: return@mapNotNull null
-                val slotId = apptData["slotId"] as? String ?: ""
-
-                if (!mySlotIds.contains(slotId)) return@mapNotNull null
-
-                async {
-                    try {
-                        val dbStatus = mapStatus(apptData["status"] as? String)
-                        val timestamp = apptData["appointmentDate"] as? Timestamp
-                        val dateDate = timestamp?.toDate()
-                        val dateString = if (dateDate != null) {
-                            dateFormatter.format(dateDate)
-                        } else {
-                            "Unknown Date"
-                        }
-
-                        val pId = apptData["patientId"] as? String ?: ""
-                        val patientDoc = db.collection("Patient").document(pId).get().await()
-
-                        val realPatient = User(
-                            id = pId,
-                            name = "${patientDoc.getString("FirstName")} ${patientDoc.getString("LastName")}",
-                            role = UserRole.PATIENT,
-                            details = patientDoc.getString("Gender") ?: "",
-                            imageUrl = patientDoc.getString("ImageUrl")
-                        )
-
-                        val meAsDoctor = User(
-                            id = doctorId,
-                            name = "Me",
-                            role = UserRole.DOCTOR,
-                            details = "My Schedule"
-                        )
-
-                        Appointment(
-                            id = it.id,
-                            dateTime = dateString,
-                            locationOrRoom = "My Room",
-                            status = dbStatus,
-                            patient = realPatient,
-                            doctor = meAsDoctor
-                        )
-                    } catch (e: Exception) {
-                        null
-                    }
+                // Fetch Doctor via Slot
+                val slotDoc = db.collection("Slot").document(appt.slotId).get().await()
+                val docId = slotDoc.getString("DoctorID") ?: ""
+                if (docId.isNotEmpty()) {
+                    val doctorTable = db.collection("Doctor").document(docId).get().await()
+                    appt.doctorSpecialty = doctorTable.getString("Specialization")
+                    appt.doctor = db.collection("ClinicStaff").document(docId).get().await().toObject(ClinicStaff::class.java)
                 }
+                appt
             }
-
-            tasks.awaitAll().filterNotNull()
-
-        } catch (e: Exception) {
-            Log.e("FirestoreRepo", "Error getting doctor appointments", e)
-            emptyList()
-        }
+        }.awaitAll().filterNotNull().sortedBy { it.appointmentDate }
     }
 
     override suspend fun updateAppointmentStatus(appointmentId: String, newStatus: String) {
         try {
-            db.collection("Appointment").document(appointmentId)
+            appointmentsCollection.document(appointmentId)
                 .update("status", newStatus)
                 .await()
         } catch (e: Exception) {

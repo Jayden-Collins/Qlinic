@@ -1,35 +1,23 @@
 package com.example.qlinic.data.model
-/**
- * File to set user for the app, for testing purpose
- **/
+
 object TestUsers {
-//    val patient = User(
-//        id = "v9i0pTJ4KtKUJ77SQwfg",
-//        name = "Monica Cheng",
-//        role = UserRole.PATIENT,
-//        details = "Female, 40 y/o"
-//    )
-
-    val patient = User(
+    val patient = CurrentUserInfo(
         id = "X2tLJZX7bTLPoZZSMnjY",
-        name = "Johnny smith",
-        role = UserRole.PATIENT,
-        details = "Male, 24 y/o"
+        name = "Johnny Smith",
+        role = UserRole.PATIENT
     )
 
-    val doctor = User(
-        "S008",
-        "Dr. David Patel",
-        UserRole.DOCTOR,
-        "Cardiology"
+    val doctor = CurrentUserInfo(
+        id = "S008",
+        name = "Dr. David Patel",
+        role = UserRole.DOCTOR
     )
 
-    val staff = User(
-        "S005",
-        "Susan Tan",
-        UserRole.STAFF,
-        "Front_Desk"
+    val staff = CurrentUserInfo(
+        id = "S005",
+        name = "Susan Tan",
+        role = UserRole.STAFF
     )
-    val current = staff
+
+    val current = patient
 }
-
