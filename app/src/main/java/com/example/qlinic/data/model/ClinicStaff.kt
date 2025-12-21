@@ -14,4 +14,6 @@ data class ClinicStaff(
     @get:PropertyName("PhoneNumber") @set:PropertyName("PhoneNumber") var phoneNumber: String = "",
     @get:PropertyName("isActive") @set:PropertyName("isActive") var isActive: Boolean = true,
     @get:PropertyName("Role") @set:PropertyName("Role") var role: String = "",
-)
+) {
+    val fullName: String get() = "$firstName $lastName"
+}

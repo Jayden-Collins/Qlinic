@@ -1,8 +1,10 @@
 package com.example.qlinic.ui.navigation
 
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -29,7 +31,14 @@ import com.example.qlinic.ui.screen.Notifs
 import com.example.qlinic.ui.screen.ReportScreen
 import com.example.qlinic.ui.viewmodel.BookApptViewModel
 import com.example.qlinic.ui.viewmodel.BookApptViewModelFactory
+import com.example.qlinic.ui.screens.DoctorCalendar
+import com.example.qlinic.ui.screens.SpecificScheduleCalendar
+import com.example.qlinic.ui.viewModels.DoctorScheduleViewModel
+import com.example.qlinic.ui.viewModels.ScheduleAppointmentViewModel
+import com.example.qlinic.ui.screens.RescheduleAppointmentScreen
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNavigation() {
     val context = LocalContext.current
@@ -116,6 +125,7 @@ fun AppNavigation() {
             )
         }
 
+        // Reschedule appointment screen - expects appointmentID and doctorID, optional rescheduleDate as query param
         composable(
             route = Routes.BOOK_APPOINTMENT,
             arguments = listOf(navArgument("doctorId") { type = NavType.StringType })
@@ -246,6 +256,44 @@ fun AppNavigation() {
                     staffId = staffId
                 )
             }
+        }
+
+        composable(Routes.DoctorCalendar.route){
+            DoctorCalendar(navController = navController, viewModel = viewModel)
+        }
+
+        composable(route = Routes.DoctorAppointmentSchedule.route, arguments = listOf(navArgument("doctorID"){type = NavType.StringType}))
+        { backStackEntry ->
+            val doctorID = backStackEntry.arguments?.getString("doctorID") ?: ""
+            val vm:  ScheduleAppointmentViewModel = viewModel()
+            SpecificScheduleCalendar(
+                navController = navController,
+                doctorID = doctorID,
+                viewModel = vm
+            )
+        }
+
+        composable(
+            route = Routes.DoctorAppointmentReschedule.route,
+            arguments = listOf(
+                navArgument("appointmentID") { type = NavType.StringType },
+                navArgument("doctorID") { type = NavType.StringType },
+                navArgument("rescheduleDate") { type = NavType.LongType; defaultValue = -1L }
+            )
+        ) { backStackEntry ->
+            val appointmentID = backStackEntry.arguments?.getString("appointmentID") ?: ""
+            val doctorID = backStackEntry.arguments?.getString("doctorID") ?: ""
+            val rescheduleDateArg = backStackEntry.arguments?.getLong("rescheduleDate") ?: -1L
+            val initialDateMillis = if (rescheduleDateArg > 0) rescheduleDateArg else null
+
+            val vm: ScheduleAppointmentViewModel = viewModel()
+            RescheduleAppointmentScreen(
+                navController = navController,
+                appointmentId = appointmentID,
+                doctorId = doctorID,
+                initialDateMillis = initialDateMillis,
+                viewModel = vm
+            )
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.example.qlinic.ui.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -14,7 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
@@ -22,14 +25,49 @@ import androidx.compose.ui.window.PopupProperties
 import com.example.qlinic.R
 import com.example.qlinic.ui.theme.QlinicTheme
 import com.example.qlinic.ui.theme.darkblue
+import com.example.qlinic.ui.theme.green
+import com.example.qlinic.ui.theme.teal
 import java.text.SimpleDateFormat
 import java.util.*
 
+// DayStyle used by single-date picker (non-nullable colors)
 data class DayStyle(
     val backgroundColor: Color,
-    val textColor: Color
+    val textColor: Color,
+    val hasAppointment: Boolean = false,
+    val isOnLeave: Boolean = false
 )
 
+@Composable
+fun RescheduleDatePicker(
+    show: Boolean,
+    onDismiss: () -> Unit,
+    selectedDate: Date,
+    onDateSelected: (Date) -> Unit,
+    disablePastDates: Boolean,
+    dateStyleProvider: (Date) -> DayStyle? = { null }
+) {
+    if (show) {
+        Popup(
+            alignment = Alignment.Center,
+            properties = PopupProperties(
+                dismissOnBackPress = true,
+                dismissOnClickOutside = true
+            ),
+            onDismissRequest = onDismiss
+        ) {
+            DatePickerContent(
+                onDismiss = onDismiss,
+                selectedDate = selectedDate,
+                onDateSelected = onDateSelected,
+                disablePastDates = disablePastDates,
+                dateStyleProvider = dateStyleProvider
+            )
+        }
+    }
+}
+
+// Popup wrapper for single-date reschedule picker. Use this in reschedule flows.
 @Composable
 fun CustomDatePicker(
     show: Boolean,
@@ -257,6 +295,38 @@ private fun CalendarGrid(
                     }
                 }
             }
+        }
+    }
+}
+
+private fun handleDateClick(
+    date: Date,
+    selectedDates: List<Date>,
+    isMultiSelectMode: Boolean,
+    isSelectable: Boolean,
+    onDateSelected: (Date) -> Unit,
+    onMultipleSelectionChanged: (List<Date>) -> Unit,
+) {
+    if (!isSelectable) return
+
+    if (isMultiSelectMode) {
+        // Toggle selection in multi-select mode
+        val newSelection = if (selectedDates.any { isSameDay(it, date) }) {
+            // Deselect if already selected
+            selectedDates.filterNot { isSameDay(it, date) }
+        } else {
+            // Add to selection
+            selectedDates + date
+        }
+        onMultipleSelectionChanged(newSelection)
+    } else {
+        // Single selection mode - toggle selection when tapping the same date
+        if (selectedDates.any { isSameDay(it, date) }) {
+            // If already selected, clear selection
+            onMultipleSelectionChanged(emptyList())
+        } else {
+            // Select this date
+            onDateSelected(date)
         }
     }
 }
