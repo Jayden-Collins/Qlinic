@@ -64,7 +64,7 @@ fun AppNavigation() {
                 }
                 else -> "Upcoming Appointments"
             }
-            
+
             val factory = HomeViewModelFactory(repository, sessionManager)
             val homeViewModel: HomeViewModel = viewModel(factory = factory)
 
@@ -121,7 +121,7 @@ fun AppNavigation() {
         ) { backStackEntry ->
             val doctorId = backStackEntry.arguments?.getString("doctorId") ?: ""
             val isStaff = sessionManager.getSavedUserType() == "CLINIC_STAFF"
-            
+
             val bookApptViewModel: BookApptViewModel = viewModel(
                 factory = BookApptViewModelFactory(sessionManager)
             )
@@ -144,6 +144,10 @@ fun AppNavigation() {
                 onUpClick = { navController.popBackStack() },
                 isDoctor = isDoctor
             )
+        }
+
+        composable(Routes.REPORT) {
+            ReportScreen(onNavigateHome = { navController.navigate(Routes.HOME) })
         }
 
         composable(
