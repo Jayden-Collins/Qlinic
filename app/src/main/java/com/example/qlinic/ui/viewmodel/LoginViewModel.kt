@@ -209,21 +209,21 @@ class LoginViewModel (application: Application): AndroidViewModel(application) {
                 }
 
                 val idUpper = uiState.identifier.uppercase()
-                if (!idUpper.startsWith("S") && !idUpper.startsWith("S")) {
+                if (!idUpper.startsWith("S") && !idUpper.startsWith("D")) {
                     setFieldErrors(
-                        idErr = "ID must start with 'S'",
-                        globalErr = "ID must start with 'S'"
+                        idErr = "ID must start with 'S' or 'D'",
+                        globalErr = "ID must start with 'S' or 'D'"
                     )
-                    return "ID must start with 'S' or 'S'"
+                    return "ID must start with 'S' or 'D'"
                 }
 
                 val pattern = Regex("^[DS]\\d{3}$")
                 if (!pattern.matches(idUpper)) {
                     setFieldErrors(
-                        idErr = "ID format must be:S001",
-                        globalErr = "ID format must be:S001"
+                        idErr = "ID format must be S001 or D001",
+                        globalErr = "ID format must be S001 or D001"
                     )
-                    return "ID format must be:S001 (letter followed by 3 digits)"
+                    return "ID format must be S001 or D001 (letter followed by 3 digits)"
                 }
 
                 null

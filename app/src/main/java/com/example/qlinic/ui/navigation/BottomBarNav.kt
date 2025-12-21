@@ -9,11 +9,13 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.qlinic.R
-import com.example.qlinic.data.model.TestUsers
+import com.example.qlinic.data.model.SessionManager
 import com.example.qlinic.data.model.UserRole
 
 data class BottomNavItem(
@@ -44,15 +46,27 @@ fun BottomNavBar(
         Routes.Profile.route to onNavigateToProfile
     )
 
-    val visibleItems = if (TestUsers.current.role == UserRole.PATIENT) {
-        // Patients don't see Report
-        navigationItems.filter { it.label != "Report" }
-    } else if (TestUsers.current.role == UserRole.DOCTOR) {
-        // Doctor see only Home & Profile
-        navigationItems.filter { it.label != "Report" &&  it.label != "Schedule" }
-    } else {
-        // Staff see everything
-        navigationItems
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val currentUserRole: UserRole = when {
+        sessionManager.getSavedUserType()?.equals("PATIENT", ignoreCase = true) == true -> UserRole.PATIENT
+        sessionManager.getSavedRole()?.equals("DOCTOR", ignoreCase = true) == true -> UserRole.DOCTOR
+        else -> UserRole.STAFF
+    }
+
+    val visibleItems = when (currentUserRole) {
+        UserRole.PATIENT -> {
+            // Patients don't see Report
+            navigationItems.filter { it.label != "Report" }
+        }
+        UserRole.DOCTOR -> {
+            // Doctor see only Home & Profile
+            navigationItems.filter { it.label != "Report" &&  it.label != "Schedule" }
+        }
+        else -> {
+            // Staff see everything
+            navigationItems
+        }
     }
     MaterialTheme.colorScheme.primary
     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)

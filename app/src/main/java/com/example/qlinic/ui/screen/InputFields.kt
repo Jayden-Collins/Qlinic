@@ -674,10 +674,22 @@ fun StaffLoginFields(
             Text(text = "Staff ID", color = Color.Gray, fontSize = 14.sp, modifier = Modifier.padding(bottom = 4.dp))
             TextField(
                 value = staffId,
-                onValueChange = onStaffIdChange,
+                onValueChange = { input ->
+                    if (input.isEmpty()) {
+                        onStaffIdChange("")
+                    } else if (input.length <= 4) {
+                        val uppercaseInput = input.uppercase()
+                        if (uppercaseInput.startsWith("S")) {
+                            val digitsPart = uppercaseInput.substring(1)
+                            if (digitsPart.all { it.isDigit() }) {
+                                onStaffIdChange(uppercaseInput)
+                            }
+                        }
+                    }
+                },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                placeholder = { Text(text = "Enter your staff ID", color = Color.LightGray) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
+                placeholder = { Text(text = "Enter your staff ID (e.g. S001)", color = Color.LightGray) },
                 shape = RoundedCornerShape(12.dp),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
@@ -736,4 +748,3 @@ fun StaffLoginFields(
         }
     }
 }
-

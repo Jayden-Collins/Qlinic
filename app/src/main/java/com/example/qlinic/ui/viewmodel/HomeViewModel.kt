@@ -1,18 +1,16 @@
 package com.example.qlinic.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.qlinic.data.model.Appointment
 import com.example.qlinic.data.model.AppointmentStatus
 import com.example.qlinic.data.model.SessionManager
-import com.example.qlinic.data.model.Slot
 import com.example.qlinic.data.model.UserRole
 import com.example.qlinic.data.repository.AppointmentRepository
 import com.example.qlinic.ui.ui_state.AppointmentCardUiState
 import com.example.qlinic.ui.ui_state.HomeUiState
-import com.google.firebase.Firebase
-import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,18 +20,16 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlin.collections.map
 
 class HomeViewModel(
     private val repository: AppointmentRepository,
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
-    // Helper to resolve the current user's ID and Role from SessionManager
     private val currentUserId: String = sessionManager.getSavedUserId() ?: sessionManager.getSavedStaffId() ?: ""
     private val currentUserRole: UserRole = when {
-        sessionManager.getSavedUserType() == "PATIENT" -> UserRole.PATIENT
-        sessionManager.getSavedRole()?.uppercase() == "DOCTOR" -> UserRole.DOCTOR
+        sessionManager.getSavedUserType()?.equals("PATIENT", ignoreCase = true) == true -> UserRole.PATIENT
+        sessionManager.getSavedRole()?.equals("DOCTOR", ignoreCase = true) == true -> UserRole.DOCTOR
         else -> UserRole.STAFF
     }
 
@@ -48,6 +44,11 @@ class HomeViewModel(
     private val pattern = "EEE, MMM dd, yyyy - hh:mm a"
 
     init {
+        Log.d("HomeVM", "Init - User ID: '$currentUserId'")
+        Log.d("HomeVM", "Init - UserType from Session: ${sessionManager.getSavedUserType()}")
+        Log.d("HomeVM", "Init - Role from Session: ${sessionManager.getSavedRole()}")
+        Log.d("HomeVM", "Init - Resolved Role: $currentUserRole")
+        
         _uiState.update { it.copy(showTabs = true) }
         loadAppointments(_uiState.value.selectedTab)
     }
@@ -56,14 +57,28 @@ class HomeViewModel(
         _uiState.update { it.copy(isLoading = true) }
 
         viewModelScope.launch {
+            Log.d("HomeVM", "loadAppointments - Start. Role: $currentUserRole, Status: $status, UID: $currentUserId")
+            
             val rawData = when (currentUserRole) {
-                UserRole.PATIENT -> repository.getAppointmentsForPatient(currentUserId, status)
-                UserRole.DOCTOR -> repository.getAppointmentsForDoctor(currentUserId, status)
-                UserRole.STAFF -> repository.getAllAppointments(status)
+                UserRole.PATIENT -> {
+                    if (currentUserId.isBlank()) {
+                        Log.e("HomeVM", "PATIENT role but currentUserId is empty!")
+                    }
+                    Log.d("HomeVM", "Fetching appointments for Patient: $currentUserId")
+                    repository.getAppointmentsForPatient(currentUserId, status)
+                }
+                UserRole.DOCTOR -> {
+                    Log.d("HomeVM", "Fetching appointments for Doctor: $currentUserId")
+                    repository.getAppointmentsForDoctor(currentUserId, status)
+                }
+                UserRole.STAFF -> {
+                    Log.d("HomeVM", "Fetching all appointments (STAFF view)")
+                    repository.getAllAppointments(status)
+                }
             }
-
+            
+            Log.d("HomeVM", "loadAppointments - Received ${rawData.size} items from repository")
             val uiItems = mapToUiState(rawData, currentUserRole)
-
             _uiState.update { it.copy(isLoading = false, appointmentItems = uiItems) }
         }
     }
@@ -73,16 +88,19 @@ class HomeViewModel(
         role: UserRole
     ): List<AppointmentCardUiState> {
         return appointments.map { appt ->
-
             val (name, subtitle, img) = if (role == UserRole.PATIENT) {
                 val doc = appt.doctor
-                Triple("Dr. ${doc?.firstName} ${doc?.lastName}", appt.doctorSpecialty ?: "", doc?.imageUrl)
+                Triple(
+                    if (doc != null) "Dr. ${doc.firstName} ${doc.lastName}" else "Loading...",
+                    appt.doctorSpecialty ?: "General Practice",
+                    doc?.imageUrl
+                )
             } else {
                 val pat = appt.patient
                 Triple("${pat?.firstName} ${pat?.lastName}", pat?.gender ?: "", pat?.imageUrl)
             }
 
-            val isStarted = isAppointmentStarted(appt.dateTime) // Your existing helper
+            val isStarted = isAppointmentStarted(appt.dateTime)
             val realStatus = if (appt.status == AppointmentStatus.UPCOMING && isStarted) {
                 AppointmentStatus.ONGOING
             } else {
@@ -115,13 +133,12 @@ class HomeViewModel(
     }
 
     fun onAppointmentAction(appointmentId: String, action: String) {
-        println("User clicked $action on appointment $appointmentId")
-
         viewModelScope.launch {
             when (action) {
                 "Complete" -> repository.updateAppointmentStatus(appointmentId, "Completed")
                 "NoShow" -> repository.updateAppointmentStatus(appointmentId, "Cancelled")
-                "Undo" -> repository.updateAppointmentStatus(appointmentId, "Booked")
+                "Undo" -> repository.updateAppointmentStatus(appointmentId, "Upcoming")
+                "Cancel" -> repository.updateAppointmentStatus(appointmentId, "Cancelled")
             }
             loadAppointments(_uiState.value.selectedTab)
         }
@@ -129,9 +146,8 @@ class HomeViewModel(
 
     fun isAppointmentStarted(dateString: String): Boolean {
         return try {
-            val formatter = DateTimeFormatter.ofPattern("EEE, MMM dd, yyyy - hh:mm a", Locale.getDefault())
+            val formatter = DateTimeFormatter.ofPattern(pattern, Locale.getDefault())
             val apptTime = LocalDateTime.parse(dateString, formatter)
-
             LocalDateTime.now().isAfter(apptTime)
         } catch (e: Exception) {
             true
@@ -155,14 +171,6 @@ class HomeViewModel(
             }
             .groupBy { parseDateToLocalDate(it.rawAppointment.dateTime)!! }
             .toSortedMap()
-    }
-
-    private fun checkIsStarted(dateString: String): Boolean {
-        return try {
-            val formatter = DateTimeFormatter.ofPattern(pattern, Locale.getDefault())
-            val apptTime = LocalDateTime.parse(dateString, formatter)
-            LocalDateTime.now().isAfter(apptTime)
-        } catch (e: Exception) { true }
     }
 
     private fun parseTime(dateString: String): String {

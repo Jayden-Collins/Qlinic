@@ -2,8 +2,10 @@ package com.example.qlinic.ui.viewmodel
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.qlinic.data.model.Patient
+import com.example.qlinic.data.model.SessionManager
 import com.example.qlinic.data.model.Slot
 import com.example.qlinic.data.repository.AppointmentRepository
 import com.example.qlinic.data.repository.FirestoreAppointmentRepository
@@ -21,7 +23,7 @@ import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 
-class BookApptViewModel : ViewModel() {
+class BookApptViewModel(private val sessionManager: SessionManager) : ViewModel() {
     private val slotRepository = SlotRepository()
     private val appointmentRepository: AppointmentRepository = FirestoreAppointmentRepository()
     private val clinicStaffRepository = ClinicStaffRepository()
@@ -247,8 +249,14 @@ class BookApptViewModel : ViewModel() {
         // Convert the LocalDateTime back to a java.util.Date object for Firestore
         val appointmentDateTime = Date.from(localDateTime.atZone(ZoneId.systemDefault()).toInstant())
 
-        //TODO: Replace placeholder patientID
-        val finalPatientId = if (isStaff) _bookingPatientId.value ?: return else "v9i0pTJ4KtKUJ77SQwfg"
+        // Use current user's ID if not staff, otherwise use the patient found/created by staff
+        val currentUserId = sessionManager.getSavedUserId() ?: ""
+        val finalPatientId = if (isStaff) _bookingPatientId.value ?: return else currentUserId
+
+        if (finalPatientId.isEmpty()) {
+            Log.e("BookApptViewModel", "confirmBooking: patientId is empty!")
+            return
+        }
 
         viewModelScope.launch {
             val isSuccess = appointmentRepository.bookAppointment(finalPatientId, slot, appointmentDateTime, symptoms)
@@ -275,6 +283,16 @@ class BookApptViewModel : ViewModel() {
 
     fun dismissSuccessPopup() {
         _showSuccessPopup.value = false
-        //TODO: Back to home page
+        // Trigger navigation back to home via some state or event
+    }
+}
+
+class BookApptViewModelFactory(private val sessionManager: SessionManager) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(BookApptViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return BookApptViewModel(sessionManager) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

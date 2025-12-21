@@ -39,6 +39,9 @@ class ScheduleViewModel(
     private val _selectedStaff = MutableStateFlow<ClinicStaff?>(null)
     val selectedStaff: StateFlow<ClinicStaff?> = _selectedStaff.asStateFlow()
 
+    private val _isDetailLoading = MutableStateFlow(false)
+    val isDetailLoading: StateFlow<Boolean> = _isDetailLoading.asStateFlow()
+
     private val clinicStaffRepository = ClinicStaffRepository()
 
     init {
@@ -63,6 +66,9 @@ class ScheduleViewModel(
 
     // Called when user clicks a card
     fun selectDoctor(doctorId: String) {
+        if (_selectedDoctor.value?.id == doctorId && _selectedStaff.value != null) return
+        
+        _isDetailLoading.value = true
         viewModelScope.launch {
             val doctor = repository.getDoctorById(doctorId)
             _selectedDoctor.value = doctor
@@ -71,7 +77,14 @@ class ScheduleViewModel(
             } else {
                 _selectedStaff.value = null
             }
+            _isDetailLoading.value = false
         }
+    }
+
+    fun clearSelectedDoctor() {
+        _selectedDoctor.value = null
+        _selectedStaff.value = null
+        _isDetailLoading.value = false
     }
 }
 

@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -39,7 +39,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.qlinic.R
@@ -56,10 +55,12 @@ fun DoctorDetailsScreen(
 ) {
     val doctor by viewModel.selectedDoctor.collectAsState()
     val staff by viewModel.selectedStaff.collectAsState()
+    val isLoading by viewModel.isDetailLoading.collectAsState()
 
     DoctorDetailsLayout(
         doctor = doctor,
         staff = staff,
+        isLoading = isLoading,
         onBackClick = onBackClick,
         onBookClick = onBookClick
     )
@@ -70,54 +71,65 @@ fun DoctorDetailsScreen(
 fun DoctorDetailsLayout(
     doctor: Doctor?,
     staff: ClinicStaff?,
+    isLoading: Boolean,
     onBackClick: () -> Unit,
     onBookClick: (String) -> Unit
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.onPrimary,
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Text("Doctor Details",
-                    style = MaterialTheme.typography.displayLarge,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 64.dp),
-                    textAlign = TextAlign.Left
-                ) },
+                    Text(
+                        text = "Doctor Details",
+                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 22.sp)
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_arrowleft),
                             contentDescription = "Back",
-                            modifier = Modifier.size(80.dp),
-                            tint = MaterialTheme.colorScheme.onSurface)
+                            modifier = Modifier.size(32.dp),
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.onPrimary)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         bottomBar = {
-            Button(
-                onClick = { doctor?.let { onBookClick(it.id) } },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(64.dp)
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Book Appointment", fontSize = 16.sp, color = Color.White)
+            if (!isLoading && doctor != null) {
+                Button(
+                    onClick = { onBookClick(doctor.id) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                        .height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Book Appointment", fontSize = 16.sp, color = Color.White)
+                }
             }
         }
     ) { padding ->
-        if (doctor != null && staff != null) {
-            DoctorDetailsContent(doctor = doctor, staff = staff, padding = padding)
-        } else {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Doctor not found",
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = com.example.qlinic.ui.theme.teal
+                )
+            } else if (doctor != null && staff != null) {
+                DoctorDetailsContent(doctor = doctor, staff = staff, padding = PaddingValues(0.dp))
+            } else {
+                Text(
+                    text = "Doctor not found",
                     style = MaterialTheme.typography.displayMedium,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.align(Alignment.Center)
                 )
             }
         }

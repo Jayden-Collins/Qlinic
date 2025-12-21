@@ -57,7 +57,7 @@ fun TopBarNav(
                     modifier = Modifier.padding(end = 8.dp) // Apply padding to IconButton container, not Icon
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_notification),
+                        painter = painterResource(id = R.drawable.notification),
                         contentDescription = "Notifications",
                         modifier = Modifier.size(24.dp)
                     )

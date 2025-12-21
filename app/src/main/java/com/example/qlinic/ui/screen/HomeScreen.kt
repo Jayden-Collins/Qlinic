@@ -1,5 +1,6 @@
 package com.example.qlinic.ui.screen
 
+import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.qlinic.R
@@ -161,14 +163,14 @@ fun HomeScreenContent(
                                     color = MaterialTheme.colorScheme.onBackground,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(MaterialTheme.colorScheme.background)
+                                        .background(MaterialTheme.colorScheme.onPrimary)
                                         .padding(bottom = 8.dp)
                                 )
                             }
                             items(uiItems) { uiItem ->
                                 TimelineAppointmentRow(
                                     uiItem = uiItem,
-                                    currentUserRole = state.userRole ?: UserRole.PATIENT,
+                                    currentUserRole = state.userRole,
                                     onActionClick = onAction
                                 )
                             }
@@ -192,7 +194,7 @@ fun HomeScreenContent(
                         items(items = state.appointmentItems, key = { it.id }) { uiItem ->
                             AppointmentCard(
                                 uiItem = uiItem,
-                                currentUserRole = state.userRole ?: UserRole.PATIENT,
+                                currentUserRole = state.userRole,
                                 onActionClick = onAction
                             )
                         }
@@ -287,10 +289,10 @@ fun AppointmentCard(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.width(4.dp))
+                        Log.d("ROOM", uiItem.rawAppointment.roomId ?: "TBD")
                         Text(
-                            text = uiItem.rawAppointment.roomId,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = uiItem.rawAppointment.roomId ?: "TBD",
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
@@ -306,18 +308,22 @@ fun AppointmentCard(
                             containerColor = MaterialTheme.colorScheme.onBackground,
                             contentColor = MaterialTheme.colorScheme.onSecondary
                         ),
+                        contentPadding = PaddingValues(horizontal = 8.dp),
                         modifier = Modifier.weight(1f)
-                    ) { Text("Cancel") }
+                    ) { Text(
+                        text ="Cancel", maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp) // Slightly smaller
+                    ) }
 
                     Button(
                         onClick = { onActionClick(uiItem.id, "Reschedule") },
                         enabled = uiItem.isActionEnabled,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.outline,
+                            containerColor = MaterialTheme.colorScheme.onSecondary,
                             contentColor = MaterialTheme.colorScheme.onBackground
                         ),
+                        contentPadding = PaddingValues(horizontal = 4.dp),
                         modifier = Modifier.weight(1f)
-                    ) { Text("Reschedule") }
+                    ) { Text(text ="Reschedule", maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp)) }
                 }
             }
             // DOCTOR BUTTONS (Complete / No Show)

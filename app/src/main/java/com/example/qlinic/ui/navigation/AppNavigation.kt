@@ -26,6 +26,8 @@ import com.example.qlinic.ui.screen.EditProfileScreen
 import com.example.qlinic.ui.screen.ForgotPasswordScreen
 import com.example.qlinic.ui.screen.ProfileScreen
 import com.example.qlinic.ui.screen.Notifs
+import com.example.qlinic.ui.viewmodel.BookApptViewModel
+import com.example.qlinic.ui.viewmodel.BookApptViewModelFactory
 
 @Composable
 fun AppNavigation() {
@@ -119,10 +121,16 @@ fun AppNavigation() {
         ) { backStackEntry ->
             val doctorId = backStackEntry.arguments?.getString("doctorId") ?: ""
             val isStaff = sessionManager.getSavedUserType() == "CLINIC_STAFF"
+            
+            val bookApptViewModel: BookApptViewModel = viewModel(
+                factory = BookApptViewModelFactory(sessionManager)
+            )
+
             BookAppt(
                 doctorId = doctorId,
                 onUpClick = { navController.popBackStack() },
-                isStaff = isStaff
+                isStaff = isStaff,
+                viewModel = bookApptViewModel
             )
         }
 
@@ -144,7 +152,9 @@ fun AppNavigation() {
         ) { backStackEntry ->
             val role = backStackEntry.arguments?.getString("role") ?: "patient"
             MainAppScaffold(navController = navController, screenTitle = "Profile") { paddingValues ->
-                ProfileScreen(navController, paddingValues, role)
+                ProfileScreen(navController, paddingValues, role, onNotificationClick = {
+                    navController.navigate(Routes.Notifications.route)
+                })
             }
         }
 
@@ -161,7 +171,8 @@ fun AppNavigation() {
                     navController = navController,
                     paddingValues = paddingValues,
                     role = role,
-                    staffId = null
+                    staffId = null,
+                    onNotificationClick = {navController.navigate(Routes.Notifications.route)}
                 )
             }
         }
@@ -181,7 +192,8 @@ fun AppNavigation() {
                     navController = navController,
                     paddingValues = paddingValues,
                     role = role,
-                    staffId = staffId
+                    staffId = staffId,
+                    onNotificationClick = {navController.navigate(Routes.Notifications.route)}
                 )
             }
         }

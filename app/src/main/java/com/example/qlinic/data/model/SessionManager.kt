@@ -22,7 +22,6 @@ class SessionManager(private val context: Context) {
         private const val KEY_LAST_LOGIN = "last_login"
     }
 
-    // For encrypted preferences (recommended for sensitive data)
     private val masterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()
@@ -37,14 +36,10 @@ class SessionManager(private val context: Context) {
         )
     }
 
-    // Alternatively, use regular SharedPreferences if you don't want encryption
-    // private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
     init {
-        // Initialize login state
         _isLoggedIn.value = getIsLoggedIn()
     }
 
@@ -61,20 +56,22 @@ class SessionManager(private val context: Context) {
             putBoolean(KEY_IS_LOGGED_IN, isLoggedIn)
             putBoolean(KEY_REMEMBER_ME, rememberMe)
 
-            if (rememberMe) {
+            // Essential session data should ALWAYS be saved if we are logging in,
+            // otherwise the app won't know the current user's role/ID.
+            if (isLoggedIn) {
                 userType?.let { putString(KEY_USER_TYPE, it) }
-                identifier?.let { putString(KEY_IDENTIFIER, it) }
                 userId?.let { putString(KEY_USER_ID, it) }
                 staffId?.let { putString(KEY_STAFF_ID, it) }
                 role?.let { putString(KEY_ROLE, it) }
+            }
+
+            if (rememberMe) {
+                identifier?.let { putString(KEY_IDENTIFIER, it) }
                 putLong(KEY_LAST_LOGIN, System.currentTimeMillis())
             } else {
-                // Clear saved credentials if "Remember Me" is not checked
+                // If "Remember Me" is false, we clear the identifier (like email) 
+                // so it's not pre-filled next time, but we keep the session active.
                 remove(KEY_IDENTIFIER)
-                remove(KEY_USER_TYPE)
-                remove(KEY_USER_ID)
-                remove(KEY_STAFF_ID)
-                remove(KEY_ROLE)
             }
 
             apply()
@@ -92,7 +89,6 @@ class SessionManager(private val context: Context) {
     }
 
     fun logout() {
-        // Clear session and also clear Firebase auth
         clearSession()
     }
 
@@ -128,7 +124,6 @@ class SessionManager(private val context: Context) {
         return encryptedPrefs.getLong(KEY_LAST_LOGIN, 0)
     }
 
-    // Optional: Auto-logout after certain period
     fun shouldAutoLogout(days: Int = 30): Boolean {
         if (!shouldRememberMe()) return false
 

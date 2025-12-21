@@ -39,7 +39,8 @@ fun ProfileScreen(
     paddingValues: PaddingValues,
     role: String = "patient",
     staffId: String? = null, // pass Staff document id for ClinicStaff / Doctor lookups
-    viewModel: ProfileViewModel = viewModel()
+    viewModel: ProfileViewModel = viewModel(),
+    onNotificationClick: () -> Unit
 ) {
     val authUid = FirebaseAuth.getInstance().currentUser?.uid
     val context = LocalContext.current
@@ -212,7 +213,8 @@ fun ProfileScreen(
                     ProfileMenuItem(
                         icon = R.drawable.notification,
                         text = "Notifications",
-                        onClick = { /* Handle click */ })
+                        onClick = onNotificationClick,
+                    )
                     Divider(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                         thickness = 0.5.dp,
