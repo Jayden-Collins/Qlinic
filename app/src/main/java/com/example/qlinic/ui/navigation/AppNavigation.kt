@@ -8,7 +8,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.qlinic.ui.screen.LoginScreen
 import com.example.qlinic.ui.screen.PatientSignUpScreen
-import com.example.qlinic.data.repository.FirestoreAppointmentRepository
 import com.example.qlinic.data.repository.FirestoreDoctorRepository
 import com.example.qlinic.ui.screen.DoctorDetailsScreen
 import com.example.qlinic.ui.screen.HomeScreen
@@ -21,11 +20,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.example.qlinic.data.model.SessionManager
+import com.example.qlinic.data.repository.FirestoreAppointmentRepository
 import com.example.qlinic.ui.screen.BookAppt
 import com.example.qlinic.ui.screen.EditProfileScreen
 import com.example.qlinic.ui.screen.ForgotPasswordScreen
 import com.example.qlinic.ui.screen.ProfileScreen
 import com.example.qlinic.ui.screen.Notifs
+import com.example.qlinic.ui.screen.ReportScreen
 import com.example.qlinic.ui.viewmodel.BookApptViewModel
 import com.example.qlinic.ui.viewmodel.BookApptViewModelFactory
 
@@ -146,8 +147,10 @@ fun AppNavigation() {
             )
         }
 
-        composable(Routes.REPORT) {
-            ReportScreen(onNavigateHome = { navController.navigate(Routes.HOME) })
+        composable(Routes.Report.route) {
+            MainAppScaffold(navController = navController, screenTitle = "Reports") { paddingValues ->
+                ReportScreen(paddingValues = paddingValues)
+            }
         }
 
         composable(

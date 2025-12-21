@@ -343,7 +343,6 @@ private fun PreviewCustomDatePicker() {
             onDismiss = {},
             selectedDate = selectedDate,
             onDateSelected = { selectedDate = it },
-            disablePastDates = true,
             disablePastDates = false,
             disableFutureDates = true,
             dateStyleProvider = { date ->

@@ -87,6 +87,7 @@ fun BookAppt(
                     viewModel.onDateSelected(date)
                 },
                 disablePastDates = true,
+                disableFutureDates = false,
                 dateStyleProvider = { date ->
                     if (date == selectedDate) {
                         DayStyle(

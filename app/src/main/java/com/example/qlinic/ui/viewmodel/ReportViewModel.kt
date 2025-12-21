@@ -9,6 +9,7 @@ import com.example.qlinic.data.model.PeakHoursReportData
 import com.example.qlinic.data.model.ReportDocument
 import com.example.qlinic.data.model.ReportFilterState
 import com.example.qlinic.data.repository.AppointmentRepository
+import com.example.qlinic.data.repository.FirestoreAppointmentRepository
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.SetOptions
@@ -22,7 +23,7 @@ import kotlinx.coroutines.tasks.await
 class ReportViewModel : ViewModel() {
 
     private val db = Firebase.firestore
-    private val repository = AppointmentRepository()
+    private val repository = FirestoreAppointmentRepository()
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()

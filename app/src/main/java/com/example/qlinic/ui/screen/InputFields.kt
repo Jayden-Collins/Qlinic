@@ -677,19 +677,27 @@ fun StaffLoginFields(
                 onValueChange = { input ->
                     if (input.isEmpty()) {
                         onStaffIdChange("")
-                    } else if (input.length <= 4) {
-                        val uppercaseInput = input.uppercase()
-                        if (uppercaseInput.startsWith("S")) {
-                            val digitsPart = uppercaseInput.substring(1)
-                            if (digitsPart.all { it.isDigit() }) {
+                        return@TextField
+                    }
+                    val uppercaseInput = input.uppercase()
+
+                    // If it follows the ID pattern (S + digits), enforce length 4
+                    if (uppercaseInput.startsWith("S") && !input.contains("@")) {
+                        val digitsPart = uppercaseInput.substring(1)
+                        if (digitsPart.all { it.isDigit() }) {
+                            if (uppercaseInput.length <= 4) {
                                 onStaffIdChange(uppercaseInput)
                             }
+                            return@TextField
                         }
                     }
+
+                    // Otherwise allow as email
+                    onStaffIdChange(input)
                 },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
-                placeholder = { Text(text = "Enter your staff ID (e.g. S001)", color = Color.LightGray) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                placeholder = { Text(text = "Staff ID (e.g. S001) or Email", color = Color.LightGray) },
                 shape = RoundedCornerShape(12.dp),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
