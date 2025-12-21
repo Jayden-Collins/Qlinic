@@ -23,12 +23,10 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.qlinic.data.model.SessionManager
 import com.example.qlinic.ui.navigation.Routes
 import com.example.qlinic.ui.viewmodel.LoginUserType
 import com.example.qlinic.ui.viewmodel.LoginViewModel
 import com.example.qlinic.ui.viewmodel.LoginViewModelFactory
-import kotlinx.coroutines.launch
 
 enum class UserType {
     PATIENT,
@@ -47,10 +45,8 @@ fun LoginScreen(
         factory = LoginViewModelFactory(context)
     )
 
-
     val uiState = loginViewModel.uiState
     var rememberMe by remember { mutableStateOf(uiState.rememberMe) }
-    val sessionManager = remember { SessionManager(context) }
 
     val selectedUserType =
         if (uiState.userType == LoginUserType.PATIENT) UserType.PATIENT else UserType.STAFF
@@ -58,84 +54,15 @@ fun LoginScreen(
 
     // React to navigation flags and consume them
     LaunchedEffect(uiState.navigateToPatientHome, uiState.navigateToStaffHome, uiState.navigateToDoctorHome) {
-        when {
-            uiState.navigateToPatientHome -> {
-                navController.navigate(Routes.PATIENT_HOME) {
-                    popUpTo(Routes.USER_SELECTION) { inclusive = true }
-                }
-                loginViewModel.resetNavigation()
-            }
-
-            uiState.navigateToDoctorHome -> {
-                // Prefer the current UI identifier (staff ID entered) because session storage
-                // may not contain staffId if user didn't check "Remember Me".
-                val staffId = uiState.identifier.takeIf { it.isNotBlank() }
-                    ?: sessionManager.getSavedStaffId()
-                    ?: ""
-                if (staffId.isNotBlank()) {
-                    navController.navigate("${Routes.DOCTOR_HOME}/$staffId") {
-                        popUpTo(Routes.USER_SELECTION) { inclusive = true }
-                    }
-                }
-                loginViewModel.resetNavigation()
-            }
-
-            uiState.navigateToStaffHome -> {
-                val staffId = uiState.identifier.takeIf { it.isNotBlank() }
-                    ?: sessionManager.getSavedStaffId()
-                    ?: ""
-                if (staffId.isNotBlank()) {
-                    navController.navigate("${Routes.STAFF_HOME}/$staffId") {
-                        popUpTo(Routes.USER_SELECTION) { inclusive = true }
-                    }
-                }
-                loginViewModel.resetNavigation()
-            }
-        }
-    }
-
-    /*
-    // Patient navigation (unchanged)
-    LaunchedEffect(uiState.navigateToPatientHome) {
-        if (uiState.navigateToPatientHome) {
-            navController.navigate(Routes.PATIENT_HOME) {
+        if (uiState.navigateToPatientHome || uiState.navigateToStaffHome || uiState.navigateToDoctorHome) {
+            // Navigate to the unified HomeScreen
+            navController.navigate(Routes.Home.route) {
                 popUpTo(Routes.USER_SELECTION) { inclusive = true }
             }
-            viewModel.resetNavigation()
+            loginViewModel.resetNavigation()
         }
     }
 
-
-    LaunchedEffect(uiState.navigateToStaffHome) {
-        if (uiState.navigateToStaffHome) {
-
-            val staffId = uiState.identifier   //  MUST NOT be null
-
-            if (!staffId.isNullOrBlank()) {
-                navController.navigate("${Routes.STAFF_HOME}/$staffId") {
-                    popUpTo(Routes.USER_SELECTION) { inclusive = true }
-                }
-            }
-
-            viewModel.resetNavigation()
-        }
-    }
-
-    LaunchedEffect(uiState.navigateToDoctorHome) {
-        if (uiState.navigateToDoctorHome) {
-
-            val staffId = uiState.identifier   //  MUST NOT be null
-
-            if (!staffId.isNullOrBlank()) {
-                navController.navigate("${Routes.DOCTOR_HOME}/$staffId") {
-                    popUpTo(Routes.USER_SELECTION) { inclusive = true }
-                }
-            }
-
-            viewModel.resetNavigation()
-        }
-    }
-*/
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -156,19 +83,22 @@ fun LoginScreen(
         )
 
         Column(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ){
             Image(
                 painter = painterResource(id = R.drawable.app_logo),
                 contentDescription = "App Logo",
-                modifier = Modifier.size(400.dp)
+                modifier = Modifier.size(250.dp) // Reduced size to prevent overlap
             )
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Foreground sheet aligned to bottom
         Box(
             modifier = Modifier
-                .height(600.dp)
+                .height(550.dp)
                 .fillMaxWidth()
                 .align(Alignment.BottomStart)
                 .clip(RoundedCornerShape(topStart = 80.dp))
@@ -323,7 +253,7 @@ fun LoginScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
                     modifier = Modifier
@@ -357,16 +287,15 @@ fun LoginScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Login Button
                 Button(
                     onClick = {
-                        // call the ViewModel's login method (it's non-suspending and handles coroutines internally)
                         loginViewModel.login(
                             rememberMe = rememberMe,
-                            onSuccessNavigate = { /* navigation handled by LaunchedEffect */ },
-                            onFailure = { /* UI already shows error in state */ }
+                            onSuccessNavigate = { /* handled by LaunchedEffect */ },
+                            onFailure = { /* UI handled */ }
                         )
                     },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -382,7 +311,7 @@ fun LoginScreen(
                 }
 
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Sign up link (only for patients)
                 if (selectedUserType == UserType.PATIENT) {
@@ -411,8 +340,3 @@ fun LoginScreen(
         }
     }
 }
-
-
-
-
-

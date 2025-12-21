@@ -35,18 +35,14 @@ import com.example.qlinic.ui.theme.teal
 import com.example.qlinic.ui.theme.white
 import com.example.qlinic.ui.viewmodel.BookApptViewModel
 import com.example.qlinic.utils.formatTime
-import com.google.firebase.Firebase
-import com.google.firebase.firestore.firestore
 
 @Composable
 fun BookAppt(
+    doctorId: String,
     onUpClick: () -> Unit,
     isStaff: Boolean,
     viewModel: BookApptViewModel = viewModel()
 ) {
-    val user = Firebase.firestore.collection("Patient").document("v9i0pTJ4KtKUJ77SQwfg")
-
-    val selectedDoctor = "S008"
     val selectedDate by viewModel.selectedDate.collectAsState()
     val availableSlots by viewModel.availableSlots.collectAsState()
     val selectedSlot by viewModel.selectedSlot.collectAsState()
@@ -63,8 +59,8 @@ fun BookAppt(
     val showExistingPatientIcPopup by viewModel.showExistingPatientIcPopup.collectAsState()
     val showNewPatientDetailsPopup by viewModel.showNewPatientDetailsPopup.collectAsState()
 
-    LaunchedEffect(selectedDate) {
-        viewModel.getDoctorSlots(selectedDoctor, selectedDate)
+    LaunchedEffect(doctorId, selectedDate) {
+        viewModel.getDoctorSlots(doctorId, selectedDate)
     }
 
     SimplePageScaffold(
@@ -212,10 +208,10 @@ fun BookAppt(
             symptoms = symptoms,
             onSymptomsChange = { viewModel.onSymptomsChanged(it) },
             onSkip = {
-                viewModel.confirmBooking(isStaff = isStaff, doctorId = selectedDoctor, symptoms = "")
+                viewModel.confirmBooking(isStaff = isStaff, doctorId = doctorId, symptoms = "")
             },
             onConfirm = {
-                viewModel.confirmBooking(isStaff = isStaff, doctorId = selectedDoctor, symptoms = symptoms)
+                viewModel.confirmBooking(isStaff = isStaff, doctorId = doctorId, symptoms = symptoms)
             },
             isStaff = isStaff
         )

@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,13 +32,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -59,12 +56,12 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.qlinic.R
 import com.example.qlinic.ui.viewmodel.EditProfileViewModel
-import kotlinx.coroutines.flow.collect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
     navController: NavController,
+    paddingValues: PaddingValues,
     userId: String,
     role: String = "patient", // "patient" | "staff" | "doctor"
     staffId: String? = null,
@@ -160,324 +157,296 @@ fun EditProfileScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(text = when (role.lowercase()) {
-                        "doctor" -> "Edit Doctor Profile"
-                        "staff" -> "Edit Staff Profile"
-                        else -> "Edit Profile"
-                    })
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
-        }
-    ) { innerPadding ->
-        Box(
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+            .background(colorResource(id = R.color.white))
+    ) {
+        Column(
             modifier = Modifier
-                .background(colorResource(id = R.color.white))
-                .padding(innerPadding)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .imePadding()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.Top
-            ) {
-                if (!imageUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = "Profile image",
-                        modifier = Modifier
-                            .size(110.dp)
-                            .align(Alignment.CenterHorizontally)
-                            .clip(CircleShape)
-                            .border(2.dp, Color.LightGray, CircleShape)
-                            .clickable { launcher.launch("image/*") }
-                    )
-                } else {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_profile),
-                        contentDescription = "Profile placeholder",
-                        modifier = Modifier
-                            .size(110.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, Color.LightGray, CircleShape)
-                            .clickable { launcher.launch("image/*") }
-                            .align(Alignment.CenterHorizontally)
-                    )
-                }
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Top
+        ) {
+            IconButton(onClick = { navController.popBackStack() }) {
+                Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+            }
 
-                Text(
-                    text = "Change photo",
+            if (!imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = "Profile image",
                     modifier = Modifier
+                        .size(110.dp)
                         .align(Alignment.CenterHorizontally)
-                        .padding(top = 8.dp),
-                    fontSize = 12.sp,
-                    color = Color.Gray
+                        .clip(CircleShape)
+                        .border(2.dp, Color.LightGray, CircleShape)
+                        .clickable { launcher.launch("image/*") }
                 )
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_profile),
+                    contentDescription = "Profile placeholder",
+                    modifier = Modifier
+                        .size(110.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, Color.LightGray, CircleShape)
+                        .clickable { launcher.launch("image/*") }
+                        .align(Alignment.CenterHorizontally)
+                )
+            }
 
-                Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Change photo",
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 8.dp),
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "First Name",
-                            fontSize = 14.sp,
-                            color = Color.Black,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        FirstNameField(
-                            firstName = firstName,
-                            onValueChange = { firstName = it },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+            Spacer(modifier = Modifier.height(12.dp))
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Last Name",
-                            fontSize = 14.sp,
-                            color = Color.Black,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        LastNameField(
-                            lastName = lastName,
-                            onValueChange = { lastName = it },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-
-                if (role.lowercase() == "patient") {
-                    Spacer(modifier = Modifier.height(8.dp))
-
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "NRIC",
+                        text = "First Name",
                         fontSize = 14.sp,
                         color = Color.Black,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-
-                    IcNumberField(
-                        nric = ic,
-                        onValueChange = { ic = it },
+                    FirstNameField(
+                        firstName = firstName,
+                        onValueChange = { firstName = it },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
 
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Last Name",
+                        fontSize = 14.sp,
+                        color = Color.Black,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    LastNameField(
+                        lastName = lastName,
+                        onValueChange = { lastName = it },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            if (role.lowercase() == "patient") {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Email",
+                    text = "NRIC",
                     fontSize = 14.sp,
                     color = Color.Black,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
-                EmailField(
-                    email = email,
+                IcNumberField(
+                    nric = ic,
                     onValueChange = { /* read-only */ },
                     enabled = false,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Email",
+                fontSize = 14.sp,
+                color = Color.Black,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            EmailField(
+                email = email,
+                onValueChange = { /* read-only */ },
+                enabled = false,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Phone Number",
+                        fontSize = 14.sp,
+                        color = Color.Black,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    PhoneNumberField(
+                        phoneNumber = phone,
+                        onValueChange = { phone = it },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Gender",
+                        fontSize = 14.sp,
+                        color = Color.Black,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    GenderField(
+                        selectedGender = gender,
+                        onGenderSelected = { /* read-only */ },
+                        enabled = false,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(15.dp))
+
+            if (role.lowercase() == "doctor") {
+
+                Text(
+                    text = "Description",
+                    fontSize = 14.sp,
+                    color = Color.Black,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                DescriptionField(
+                    description = description,
+                    onValueChange = { description = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text(
+                    text = "Years of Experience",
+                    fontSize = 14.sp,
+                    color = Color.Black,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                YearOfExpField(
+                    yearsOfExp = yearsOfExp,
+                    onValueChange = { yearsOfExp = it.filter { ch -> ch.isDigit() } },
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Phone Number",
-                            fontSize = 14.sp,
-                            color = Color.Black,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        PhoneNumberField(
-                            phoneNumber = phone,
-                            onValueChange = { phone = it },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+                Text(
+                    text = "Specialization",
+                    fontSize = 14.sp,
+                    color = Color.Black,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Gender",
-                            fontSize = 14.sp,
-                            color = Color.Black,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        GenderField(
-                            selectedGender = gender,
-                            onGenderSelected = { /* read-only */ },
-                            enabled = false,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
+                SpecializationField(
+                    specialization = specialization,
+                    onValueChange = { specialization = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-                Spacer(modifier = Modifier.height(15.dp))
-
-
-                if (role.lowercase() == "doctor") {
-
-                    Text(
-                        text = "Description",
-                        fontSize = 14.sp,
-                        color = Color.Black,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    DescriptionField(
-                        description = description,
-                        onValueChange = { description = it },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Text(
-                        text = "Years of Experience",
-                        fontSize = 14.sp,
-                        color = Color.Black,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    YearOfExpField(
-                        yearsOfExp = yearsOfExp,
-                        onValueChange = { yearsOfExp = it.filter { ch -> ch.isDigit() } },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Description",
-                        fontSize = 14.sp,
-                        color = Color.Black,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    DescriptionField(
-                        description = description,
-                        onValueChange = { description = it },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Specialization",
-                        fontSize = 14.sp,
-                        color = Color.Black,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    SpecializationField(
-                        specialization = specialization,
-                        onValueChange = { specialization = it },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                if (role.lowercase() == "staff" || role.lowercase() == "doctor") {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(text = "Active", modifier = Modifier.weight(1f))
-                        Switch(checked = isActive, onCheckedChange = { isActive = it })
-                    }
-                }
-
-                if (!error.isNullOrBlank()) {
-                    Text(text = error ?: "", color = MaterialTheme.colorScheme.error)
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                Button(
-                    onClick = {
-                        when (role.lowercase()) {
-                            "staff" -> {
-                                viewModel.updateStaffPartial(
-                                    idToUse,
-                                    mapOf(
-                                        "FirstName" to firstName,
-                                        "LastName" to lastName,
-                                        "Email" to email,
-                                        "PhoneNumber" to phone,
-                                        "isActive" to isActive
-                                    )
-                                )
-                            }
-                            "doctor" -> {
-                                viewModel.updateStaffPartial(
-                                    idToUse,
-                                    mapOf(
-                                        "FirstName" to firstName,
-                                        "LastName" to lastName,
-                                        "Email" to email,
-                                        "PhoneNumber" to phone,
-                                        "isActive" to isActive
-                                    )
-                                )
-                                viewModel.updateDoctorPartial(
-                                    idToUse,
-                                    mapOf(
-                                        "Description" to description,
-                                        "Specialization" to specialization,
-                                        "YearsOfExp" to (yearsOfExp.toIntOrNull() ?: 0)
-                                    )
-                                )
-                            }
-                            else -> {
-                                viewModel.updatePatientPartial(
-                                    idToUse,
-                                    mapOf(
-                                        "FirstName" to firstName,
-                                        "LastName" to lastName,
-                                        "IC" to ic,
-                                        "PhoneNumber" to phone,
-                                    )
-                                )
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorResource(id = R.color.teal_700)
-                    ),
-                ) {
-                    Text(
-                        text = if (loading) "Saving..." else "Save Change",
-                        color = colorResource(id = R.color.white))
-
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
             }
 
-            if (loading) {
-                Surface(
-                    color = Color.Black.copy(alpha = 0.35f),
-                    modifier = Modifier
-                        .fillMaxSize()
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (role.lowercase() == "staff" || role.lowercase() == "doctor") {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                    Text(text = "Active", modifier = Modifier.weight(1f))
+                    Switch(checked = isActive, onCheckedChange = { isActive = it })
+                }
+            }
+
+            if (!error.isNullOrBlank()) {
+                Text(text = error ?: "", color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            Button(
+                onClick = {
+                    when (role.lowercase()) {
+                        "staff" -> {
+                            viewModel.updateStaffPartial(
+                                idToUse,
+                                mapOf(
+                                    "FirstName" to firstName,
+                                    "LastName" to lastName,
+                                    "Email" to email,
+                                    "PhoneNumber" to phone,
+                                    "isActive" to isActive
+                                )
+                            )
+                        }
+                        "doctor" -> {
+                            viewModel.updateStaffPartial(
+                                idToUse,
+                                mapOf(
+                                    "FirstName" to firstName,
+                                    "LastName" to lastName,
+                                    "Email" to email,
+                                    "PhoneNumber" to phone,
+                                    "isActive" to isActive
+                                )
+                            )
+                            viewModel.updateDoctorPartial(
+                                idToUse,
+                                mapOf(
+                                    "Description" to description,
+                                    "Specialization" to specialization,
+                                    "YearsOfExp" to (yearsOfExp.toIntOrNull() ?: 0)
+                                )
+                            )
+                        }
+                        else -> {
+                            viewModel.updatePatientPartial(
+                                idToUse,
+                                mapOf(
+                                    "FirstName" to firstName,
+                                    "LastName" to lastName,
+                                    "IC" to ic,
+                                    "PhoneNumber" to phone,
+                                )
+                            )
+                        }
                     }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorResource(id = R.color.teal_700)
+                ),
+            ) {
+                Text(
+                    text = if (loading) "Saving..." else "Save Change",
+                    color = colorResource(id = R.color.white))
+
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+
+        if (loading) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.35f),
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
             }
         }

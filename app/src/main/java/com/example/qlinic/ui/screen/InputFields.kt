@@ -172,11 +172,13 @@ fun EmailField(
 fun IcNumberField(
     nric: String,
     onValueChange: (String) -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     TextField(
         value = nric,
         onValueChange = onValueChange,
+        enabled = enabled,
         singleLine = true,
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Phone,
@@ -196,11 +198,13 @@ fun IcNumberField(
             disabledContainerColor = Color.White,
             focusedTextColor = Color.Black,
             unfocusedTextColor = Color.Black,
+            disabledTextColor = Color.LightGray,
+            disabledPlaceholderColor = Color.LightGray,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent
         ),
-        textStyle = TextStyle(color = Color.Black, fontSize = 16.sp),
+        textStyle = TextStyle(color = if (enabled) Color.Black else Color.LightGray, fontSize = 16.sp),
         modifier = modifier
             .width(350.dp)
             .padding(top = 5.dp)
@@ -583,14 +587,14 @@ fun PatientLoginFields(
     Column(modifier = modifier.fillMaxWidth()) {
         // Email field for patient
         Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Email", color = Color.Gray, fontSize = 14.sp, modifier = Modifier.padding(bottom = 4.dp))
+            Text(text = "Email/NRIC", color = Color.Gray, fontSize = 14.sp, modifier = Modifier.padding(bottom = 4.dp))
             TextField(
                 value = email,
                 onValueChange = onEmailChange,
                 enabled = enabledEmail,
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-                placeholder = { Text(text = "patient@example.com", color = Color.LightGray) },
+                placeholder = { Text(text = "patient@example.com OR 010203-07-0003", color = Color.LightGray) },
                 shape = RoundedCornerShape(12.dp),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.White,

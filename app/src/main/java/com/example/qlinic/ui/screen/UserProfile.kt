@@ -36,6 +36,7 @@ import com.example.qlinic.ui.navigation.Routes.Home.editProfileRoute
 @Composable
 fun ProfileScreen(
     navController: NavController,
+    paddingValues: PaddingValues,
     role: String = "patient",
     staffId: String? = null, // pass Staff document id for ClinicStaff / Doctor lookups
     viewModel: ProfileViewModel = viewModel()
@@ -116,19 +117,15 @@ fun ProfileScreen(
     ).joinToString(" ").ifEmpty { "No name" }
 
     if (isLoading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
     } else {
 
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             item {
-                Spacer(modifier = Modifier.height(40.dp))
-                Text(
-                    text = "Profile", fontSize = 24.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.fillMaxWidth()
-                        .wrapContentWidth(Alignment.CenterHorizontally).padding(bottom = 24.dp)
-                )
+                Spacer(modifier = Modifier.height(20.dp))
+
                 Box(modifier = Modifier.fillMaxWidth()) {
                     if (!imageUrl.isNullOrBlank()) {
                         AsyncImage(

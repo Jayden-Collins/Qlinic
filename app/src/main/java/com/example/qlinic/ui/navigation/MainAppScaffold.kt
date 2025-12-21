@@ -1,21 +1,25 @@
+package com.example.qlinic.ui.navigation
+
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.example.qlinic.ui.navigation.BottomNavBar
-import com.example.qlinic.ui.navigation.Routes
-import com.example.qlinic.ui.navigation.TopBarNav
+import com.example.qlinic.data.model.SessionManager
 
 @Composable
 fun MainAppScaffold(
     navController: NavController,
     screenTitle: String = "",
-    //special composable lambda to hold the content of the screen
     content: @Composable (PaddingValues) -> Unit
 ) {
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -25,17 +29,31 @@ fun MainAppScaffold(
         { navController.navigate(Routes.Schedule.route) { launchSingleTop = true } }
     val onNavigateToReport: () -> Unit =
         { navController.navigate(Routes.Report.route) { launchSingleTop = true } }
-    val onNavigateToProfile: () -> Unit =
-        { navController.navigate(Routes.Profile.route) { launchSingleTop = true } }
+
+    val onNavigateToProfile: () -> Unit = {
+        val userType = sessionManager.getSavedUserType()
+        val savedRole = sessionManager.getSavedRole()?.lowercase()
+        val userId = sessionManager.getSavedUserId() ?: ""
+        val staffId = sessionManager.getSavedStaffId()
+
+        val role = when (userType) {
+            "PATIENT" -> "patient"
+            "CLINIC_STAFF" -> if (savedRole == "doctor") "doctor" else "staff"
+            else -> "patient"
+        }
+
+        val route = Routes.profileRoute(role, userId, staffId)
+        navController.navigate(route) { launchSingleTop = true }
+    }
 
     val finalTitle = if (screenTitle.isNotEmpty()) {
         screenTitle
     } else {
-        when (currentRoute) {
-            Routes.Home.route -> "Upcoming Appointments"
-            Routes.Schedule.route -> "Doctor Schedules"
-            Routes.Report.route -> "Reports"
-            Routes.Profile.route -> "Profile"
+        when {
+            currentRoute == Routes.Home.route -> "Upcoming Appointments"
+            currentRoute == Routes.Schedule.route -> "Doctor Schedules"
+            currentRoute == Routes.Report.route -> "Reports"
+            currentRoute?.startsWith("profile") == true -> "Profile"
             else -> ""
         }
     }
@@ -45,7 +63,7 @@ fun MainAppScaffold(
         topBar = {
             TopBarNav(
                 title = finalTitle,
-                onNotificationClick = { /* TODO: Handle notification click */ }
+                onNotificationClick = { navController.navigate(Routes.Notifications.route) }
             )
         },
         bottomBar = {

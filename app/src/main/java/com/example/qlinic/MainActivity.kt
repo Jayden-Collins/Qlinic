@@ -13,8 +13,6 @@ import androidx.compose.ui.Modifier
 import com.example.qlinic.service.logCurrentFcmToken
 import com.example.qlinic.ui.component.NotificationPermissionRequester
 import com.example.qlinic.ui.navigation.AppNavigation
-import com.example.qlinic.ui.screen.BookAppt
-import com.example.qlinic.ui.screen.Notifs
 import com.example.qlinic.ui.theme.QlinicTheme
 
 class MainActivity : ComponentActivity() {
@@ -30,11 +28,12 @@ class MainActivity : ComponentActivity() {
                 ) {
                     AppNavigation()
                 }
-                //BookAppt(isStaff = true, onUpClick = { })
-                // Request notification permission on app start
-                //logCurrentFcmToken()
-                //NotificationPermissionRequester()
-                //Notifs(isDoctor = true, onUpClick = {})
+                
+                // Request notification permission on app start for Android 13+
+                NotificationPermissionRequester()
+                
+                // Log FCM token for debugging if needed
+                logCurrentFcmToken()
             }
         }
     }

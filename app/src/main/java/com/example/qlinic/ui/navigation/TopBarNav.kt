@@ -41,7 +41,8 @@ fun TopBarNav(
                     modifier = Modifier
                         .padding(start = 16.dp)
                         .size(50.dp)
-                        .clip(CircleShape), contentAlignment = Alignment.Center
+                        .clip(CircleShape), 
+                    contentAlignment = Alignment.Center
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.ic_logosmall),
@@ -51,13 +52,14 @@ fun TopBarNav(
                 }
             },
             actions = {
-                IconButton(onClick = onNotificationClick) {
+                IconButton(
+                    onClick = onNotificationClick,
+                    modifier = Modifier.padding(end = 8.dp) // Apply padding to IconButton container, not Icon
+                ) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_notification),
                         contentDescription = "Notifications",
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .size(24.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             },

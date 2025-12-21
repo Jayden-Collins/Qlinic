@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.qlinic.R
 import com.example.qlinic.data.model.ClinicStaff
@@ -49,7 +51,8 @@ import com.example.qlinic.ui.viewmodel.ScheduleViewModel
 @Composable
 fun DoctorDetailsScreen(
     viewModel: ScheduleViewModel,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onBookClick: (String) -> Unit
 ) {
     val doctor by viewModel.selectedDoctor.collectAsState()
     val staff by viewModel.selectedStaff.collectAsState()
@@ -57,7 +60,8 @@ fun DoctorDetailsScreen(
     DoctorDetailsLayout(
         doctor = doctor,
         staff = staff,
-        onBackClick = onBackClick
+        onBackClick = onBackClick,
+        onBookClick = onBookClick
     )
 }
 
@@ -66,9 +70,11 @@ fun DoctorDetailsScreen(
 fun DoctorDetailsLayout(
     doctor: Doctor?,
     staff: ClinicStaff?,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onBookClick: (String) -> Unit
 ) {
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.onPrimary,
         topBar = {
             TopAppBar(
                 title = {
@@ -93,7 +99,7 @@ fun DoctorDetailsLayout(
         },
         bottomBar = {
             Button(
-                onClick = { /* TODO: Navigate to Booking */ },
+                onClick = { doctor?.let { onBookClick(it.id) } },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(64.dp)
@@ -129,12 +135,32 @@ fun DoctorDetailsContent(doctor: Doctor, staff: ClinicStaff, padding: PaddingVal
     ) {
         Spacer(modifier = Modifier.height(36.dp))
 
-        // Image
-        AsyncImage(
+        // Image with Loading Indicator
+        SubcomposeAsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(staff.imageUrl)
                 .crossfade(true)
                 .build(),
+            loading = {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(48.dp),
+                        strokeWidth = 4.dp,
+                        color = com.example.qlinic.ui.theme.teal
+                    )
+                }
+            },
+            error = {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_profile),
+                    contentDescription = "Error loading image",
+                    modifier = Modifier.size(100.dp),
+                    tint = Color.Gray
+                )
+            },
             contentDescription = "Doctor",
             contentScale = ContentScale.Crop,
             modifier = Modifier

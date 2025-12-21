@@ -40,6 +40,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.qlinic.R
 import com.example.qlinic.ui.viewmodel.DoctorListItem
@@ -84,7 +85,7 @@ fun Schedule(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(uiState.doctors) { item ->
+                items(items = uiState.doctors, key = {it.doctor.id}) { item ->
                     DoctorListCard(
                         item = item,
                         onClick = {
@@ -115,12 +116,32 @@ fun DoctorListCard(item: DoctorListItem, onClick: () -> Unit) {
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Image
-            AsyncImage(
+            // Image with Loading Indicator
+            SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(staff.imageUrl)
                     .crossfade(true)
                     .build(),
+                loading = {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                            color = com.example.qlinic.ui.theme.teal
+                        )
+                    }
+                },
+                error = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_profile),
+                        contentDescription = "Error loading image",
+                        modifier = Modifier.size(40.dp),
+                        tint = Color.Gray
+                    )
+                },
                 contentDescription = "Doctor Image",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier

@@ -97,8 +97,6 @@ class LoginViewModel (application: Application): AndroidViewModel(application) {
             )
         }
 
-
-
     fun onUserTypeChange(userType: LoginUserType) {
         uiState = uiState.copy(
             userType = userType,

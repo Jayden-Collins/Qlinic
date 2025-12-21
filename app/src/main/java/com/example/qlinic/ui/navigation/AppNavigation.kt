@@ -1,6 +1,5 @@
 package com.example.qlinic.ui.navigation
 
-import MainAppScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -18,17 +17,15 @@ import com.example.qlinic.ui.viewmodel.HomeViewModel
 import com.example.qlinic.ui.viewmodel.HomeViewModelFactory
 import com.example.qlinic.ui.viewmodel.ScheduleViewModel
 import com.example.qlinic.ui.viewmodel.ScheduleViewModelFactory
-import android.util.Log
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.example.qlinic.data.model.SessionManager
-import com.example.qlinic.ui.screen.DoctorHomeScreen
+import com.example.qlinic.ui.screen.BookAppt
 import com.example.qlinic.ui.screen.EditProfileScreen
 import com.example.qlinic.ui.screen.ForgotPasswordScreen
-import com.example.qlinic.ui.screen.PatientHomeScreen
 import com.example.qlinic.ui.screen.ProfileScreen
-import com.example.qlinic.ui.screen.StaffHomeScreen
+import com.example.qlinic.ui.screen.Notifs
 
 @Composable
 fun AppNavigation() {
@@ -38,17 +35,7 @@ fun AppNavigation() {
 
     val startDestination = remember {
         if (sessionManager.getIsLoggedIn()) {
-            // Determine which screen based on saved user type
-            when (sessionManager.getSavedUserType()) {
-                "PATIENT" -> Routes.PATIENT_HOME
-                "CLINIC_STAFF" -> {
-                    when (sessionManager.getSavedRole()?.uppercase()) {
-                        "DOCTOR" -> "${Routes.DOCTOR_HOME}/${sessionManager.getSavedStaffId()}"
-                        else -> "${Routes.STAFF_HOME}/${sessionManager.getSavedStaffId()}"
-                    }
-                }
-                else -> Routes.USER_SELECTION
-            }
+            Routes.Home.route
         } else {
             Routes.USER_SELECTION
         }
@@ -97,24 +84,18 @@ fun AppNavigation() {
             )
         }
 
-        composable(Routes.PATIENT_HOME) {
-            PatientHomeScreen(
-                navController = navController
-            )
-        }
-
         composable(Routes.Schedule.route) {
             MainAppScaffold(navController = navController) { paddingValues ->
                 Schedule(
                     paddingValues = paddingValues,
-                    viewModel = scheduleViewModel, // Pass the VM
+                    viewModel = scheduleViewModel,
                     onDoctorClick = { doctorId ->
-                        // Navigate to details (we just append the ID for the route)
                         navController.navigate("doctor_details/$doctorId")
                     }
                 )
             }
         }
+
         composable(Routes.SIGNUP) {
             PatientSignUpScreen(
                 navController = navController,
@@ -122,12 +103,26 @@ fun AppNavigation() {
             )
         }
 
-        // 3. Doctor Details Route
-        composable("doctor_details/{doctorId}") {
-            // We reuse the same ViewModel because it holds the 'selectedDoctor' state
+        composable("doctor_details/{doctorId}") { backStackEntry ->
             DoctorDetailsScreen(
                 viewModel = scheduleViewModel,
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onBookClick = { doctorId ->
+                    navController.navigate("book_appointment/$doctorId")
+                }
+            )
+        }
+
+        composable(
+            route = Routes.BOOK_APPOINTMENT,
+            arguments = listOf(navArgument("doctorId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val doctorId = backStackEntry.arguments?.getString("doctorId") ?: ""
+            val isStaff = sessionManager.getSavedUserType() == "CLINIC_STAFF"
+            BookAppt(
+                doctorId = doctorId,
+                onUpClick = { navController.popBackStack() },
+                isStaff = isStaff
             )
         }
 
@@ -135,37 +130,24 @@ fun AppNavigation() {
             ForgotPasswordScreen(navController = navController)
         }
 
-        composable(
-            route = "${Routes.DOCTOR_HOME}/{staffId}",
-            arguments = listOf(navArgument("staffId") {
-                type = NavType.StringType
-            })
-        ) { backStackEntry ->
-            val staffId = backStackEntry.arguments?.getString("staffId")!!
-            DoctorHomeScreen(navController, staffId)
+        composable(Routes.Notifications.route) {
+            val isDoctor = sessionManager.getSavedRole()?.uppercase() == "DOCTOR"
+            Notifs(
+                onUpClick = { navController.popBackStack() },
+                isDoctor = isDoctor
+            )
         }
 
-        composable(
-            route = "${Routes.STAFF_HOME}/{staffId}",
-            arguments = listOf(navArgument("staffId") {
-                type = NavType.StringType
-            })
-        ) { backStackEntry ->
-            val staffId = backStackEntry.arguments?.getString("staffId")!!
-            StaffHomeScreen(navController, staffId)
-        }
-
-        // Role-only profile (e.g. profile/doctor -> uses auth UID)
         composable(
             Routes.PROFILE_ROLE_ONLY,
             arguments = listOf(navArgument("role") { type = NavType.StringType })
         ) { backStackEntry ->
             val role = backStackEntry.arguments?.getString("role") ?: "patient"
-            Log.d("AppNavigation", "Profile role-only: $role")
-            ProfileScreen(navController, role)
+            MainAppScaffold(navController = navController, screenTitle = "Profile") { paddingValues ->
+                ProfileScreen(navController, paddingValues, role)
+            }
         }
 
-        // Profile with role + userId (no staffId)
         composable(
             route = Routes.PROFILE_WITHOUT_STAFF,
             arguments = listOf(
@@ -174,15 +156,16 @@ fun AppNavigation() {
             )
         ) { backStackEntry ->
             val role = backStackEntry.arguments?.getString("role")!!
-            val userId = backStackEntry.arguments?.getString("userId")
-            ProfileScreen(
-                navController = navController,
-                role = role,
-                staffId = null
-            )
+            MainAppScaffold(navController = navController, screenTitle = "Profile") { paddingValues ->
+                ProfileScreen(
+                    navController = navController,
+                    paddingValues = paddingValues,
+                    role = role,
+                    staffId = null
+                )
+            }
         }
 
-        // Profile with role + userId + staffId
         composable(
             route = Routes.PROFILE,
             arguments = listOf(
@@ -193,13 +176,16 @@ fun AppNavigation() {
         ) { backStackEntry ->
             val role = backStackEntry.arguments?.getString("role")!!
             val staffId = backStackEntry.arguments?.getString("staffId")
-            ProfileScreen(
-                navController = navController,
-                role = role,
-                staffId = staffId
-            )
+            MainAppScaffold(navController = navController, screenTitle = "Profile") { paddingValues ->
+                ProfileScreen(
+                    navController = navController,
+                    paddingValues = paddingValues,
+                    role = role,
+                    staffId = staffId
+                )
+            }
         }
-        // Edit Profile with role + userId (no staffId)
+
         composable(
             route = Routes.EDIT_PROFILE_WITHOUT_STAFF,
             arguments = listOf(
@@ -209,15 +195,17 @@ fun AppNavigation() {
         ) { backStackEntry ->
             val role = backStackEntry.arguments?.getString("role")!!
             val userId = backStackEntry.arguments?.getString("userId")!!
-            EditProfileScreen(
-                navController = navController,
-                userId = userId,
-                role = role,
-                staffId = null
-            )
+            MainAppScaffold(navController = navController, screenTitle = "Edit Profile") { paddingValues ->
+                EditProfileScreen(
+                    navController = navController,
+                    paddingValues = paddingValues,
+                    userId = userId,
+                    role = role,
+                    staffId = null
+                )
+            }
         }
 
-        // Edit Profile with role + userId + staffId
         composable(
             route = Routes.EDIT_PROFILE,
             arguments = listOf(
@@ -229,12 +217,16 @@ fun AppNavigation() {
             val role = backStackEntry.arguments?.getString("role")!!
             val userId = backStackEntry.arguments?.getString("userId")!!
             val staffId = backStackEntry.arguments?.getString("staffId")
-            EditProfileScreen(
-                navController = navController,
-                userId = userId,
-                role = role,
-                staffId = staffId
-            )
+
+            MainAppScaffold(navController = navController, screenTitle = "Edit Profile") { paddingValues ->
+                EditProfileScreen(
+                    navController = navController,
+                    paddingValues = paddingValues,
+                    userId = userId,
+                    role = role,
+                    staffId = staffId
+                )
+            }
         }
     }
 }
