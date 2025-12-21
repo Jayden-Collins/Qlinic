@@ -1,5 +1,6 @@
 package com.example.qlinic.data.repository
 
+import android.util.Log
 import com.example.qlinic.data.model.Appointment
 import com.example.qlinic.data.model.AvailabilityException
 import com.example.qlinic.data.model.ClinicStaff
@@ -13,6 +14,7 @@ import kotlinx.coroutines.tasks.await
 import com.google.firebase.Timestamp
 import java.util.Calendar
 import java.util.Date
+import java.time.ZoneId
 
 class SpecificDoctorScheduleDetails {
     private val firestore: FirebaseFirestore = Firebase.firestore
@@ -307,14 +309,16 @@ class SpecificDoctorScheduleDetails {
         doctorID: String,
         dates: List<Date>,
         staffID: String,
-        reason: String = "OnLeave"
+        reason: String = "On Leave"
     ): Boolean {
         return try {
             val collectionRef = firestore.collection("AvailabilityException")
 
             dates.forEach { date ->
                 val startOfDay = startOfDay(date)
+                Log.d("SpecificDoctorSchedule", "Start of day: $startOfDay")
                 val endOfDay = endOfDay(date)
+                Log.d("SpecificDoctorSchedule", "End of day: $endOfDay")
 
                 // Get a new document reference to obtain Firestore auto-generated ID
                 val newDocRef = collectionRef.document()
@@ -475,6 +479,68 @@ class SpecificDoctorScheduleDetails {
         } catch (e: Exception) {
             println("Error fetching slot times: ${e.message}")
             emptyMap()
+        }
+    }
+
+    // New: one-time migration to normalize existing AvailabilityException documents
+    // Recomputes startDateTime/endDateTime to full-day boundaries in Asia/Singapore and updates documents.
+    // Use sparingly and optionally provide doctorId/from/to to limit scope.
+    suspend fun migrateNormalizeAvailabilityExceptions(
+        doctorId: String? = null,
+        fromDate: Date? = null,
+        toDate: Date? = null
+    ): Int {
+        return try {
+            val coll = firestore.collection("AvailabilityException")
+
+            // Build base query
+            var query = coll.limit(1000)
+            if (doctorId != null) query = query.whereEqualTo("doctorID", doctorId)
+
+            val snap = query.get().await()
+            var updated = 0
+
+            val zone = ZoneId.of("Asia/Singapore")
+
+            for (doc in snap.documents) {
+                try {
+                    val startTs = doc.getTimestamp("startDateTime")
+                    val endTs = doc.getTimestamp("endDateTime")
+                    if (startTs == null || endTs == null) continue
+
+                    // Compute local dates
+                    val startLocal = startTs.toDate().toInstant().atZone(zone).toLocalDate()
+                    val endLocal = endTs.toDate().toInstant().atZone(zone).toLocalDate()
+
+                    // Optionally filter by provided from/to (compare as LocalDate)
+                    if (fromDate != null) {
+                        val f = fromDate.toInstant().atZone(zone).toLocalDate()
+                        if (endLocal.isBefore(f)) continue
+                    }
+                    if (toDate != null) {
+                        val t = toDate.toInstant().atZone(zone).toLocalDate()
+                        if (startLocal.isAfter(t)) continue
+                    }
+
+                    val newStart = Date.from(startLocal.atStartOfDay(zone).toInstant())
+                    val newEnd = Date.from(endLocal.plusDays(1).atStartOfDay(zone).minusNanos(1).toInstant())
+
+                    val updates = mapOf(
+                        "startDateTime" to Timestamp(newStart),
+                        "endDateTime" to Timestamp(newEnd)
+                    )
+
+                    coll.document(doc.id).update(updates).await()
+                    updated++
+                } catch (t: Throwable) {
+                    // ignore single doc failures
+                }
+            }
+
+            updated
+        } catch (e: Exception) {
+            println("Migration failed: ${e.message}")
+            0
         }
     }
 }

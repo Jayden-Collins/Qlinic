@@ -76,6 +76,7 @@ fun CustomDatePicker(
     onDateSelected: (Date) -> Unit, // For single selection
     onMultipleSelectionChanged: (List<Date>) -> Unit, // For multi-selection
     enableMultiSelect: Boolean = true, // Toggle multi-select mode
+    disablePastDates: Boolean = false, // if true, disallow selecting past dates
     onMonthChanged: (Calendar) -> Unit = {}, // notify parent when visible month changes
 ) {
     var currentDate by remember { mutableStateOf(Calendar.getInstance()) }
@@ -156,6 +157,7 @@ fun CustomDatePicker(
                 leaveDates = leaveDates,
                 onDateSelected = onDateSelected,
                 isMultiSelectMode = isMultiSelectMode,
+                disablePastDates = disablePastDates,
                 onMultipleSelectionChanged = onMultipleSelectionChanged
             )
 
@@ -445,6 +447,7 @@ private fun CalendarGridSingle(
                                 isSelected = isSameDay(date, selectedDate),
                                 isMultiSelectMode = false,
                                 isCurrentMonth = isInMonth,
+                                isSelectable = enabled,
                                 onClick = {
                                     if (enabled) onDateSelected(date)
                                 }
@@ -484,6 +487,7 @@ private fun CalendarGrid(
     leaveDates: List<Date>,
     onDateSelected: (Date) -> Unit,
     isMultiSelectMode: Boolean,
+    disablePastDates: Boolean,
     onMultipleSelectionChanged: (List<Date>) -> Unit,
 ) {
     val calendar = currentDate.clone() as Calendar
@@ -547,6 +551,12 @@ private fun CalendarGrid(
 
                         val date = calendarDay.time
 
+                        // determine if this date is in the past (compare at start of day)
+                        val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }
+                        val isPast = calendarDay.time.before(todayStart.time)
+
+                        val isSelectable = !isOnLeave && !hasAppointment && (!isPast || !disablePastDates)
+
                         Day(
                             day = calendarDay.get(Calendar.DAY_OF_MONTH),
                             hasAppointment = hasAppointment,
@@ -554,13 +564,14 @@ private fun CalendarGrid(
                             isSelected = isSelected,
                             isMultiSelectMode = isMultiSelectMode,
                             isCurrentMonth = calendarDay.get(Calendar.MONTH) == currentDate.get(Calendar.MONTH),
+                            isSelectable = isSelectable,
 
                             onClick = {
                                 handleDateClick(
                                     date = date,
                                     selectedDates = selectedDates,
                                     isMultiSelectMode = isMultiSelectMode,
-                                    isSelectable = !isOnLeave && !hasAppointment,
+                                    isSelectable = isSelectable,
                                     onDateSelected = onDateSelected,
                                     onMultipleSelectionChanged = onMultipleSelectionChanged
                                 )
@@ -620,12 +631,10 @@ private fun Day(
     isSelected: Boolean,
     isMultiSelectMode: Boolean,
     isCurrentMonth: Boolean,
+    isSelectable: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-
-    // Determine if date is selectable
-    val isSelectable = !isOnLeave && !hasAppointment
 
     // Determine background color
     val backgroundColor = when {

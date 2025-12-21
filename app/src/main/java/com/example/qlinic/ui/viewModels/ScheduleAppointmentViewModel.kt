@@ -124,10 +124,21 @@ class ScheduleAppointmentViewModel : ViewModel(){
         viewModelScope.launch {
             _isLoading.value = true
             try {
+                // Filter out any dates in the past (compare by start of day)
+                val todayStartCal = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }
+                val filteredDates = dates.filter { d ->
+                    val c = Calendar.getInstance().apply { time = d; set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }
+                    !c.time.before(todayStartCal.time)
+                }
+
+                if (filteredDates.isEmpty()) {
+                    _errorMessage.value = "Cannot mark past dates as leave"
+                    return@launch
+                }
                 // Call repository to mark leave in Firestore
                 val success = repository.markDoctorAsLeave(
                     doctorID = doctor.value?.id ?: "",
-                    dates = dates,
+                    dates = filteredDates,
                     staffID = currentStaffID,
                     reason = "On Leave"
                 )
@@ -135,7 +146,8 @@ class ScheduleAppointmentViewModel : ViewModel(){
                 if (success) {
                     // Update local state
                     val updatedLeaves = _leaveDates.value.toMutableList()
-                    dates.forEach { date ->
+                    // use filteredDates for local update
+                    filteredDates.forEach { date ->
                         if (!updatedLeaves.any { isSameDay(it, date) }) {
                             updatedLeaves.add(date)
                         }
@@ -143,7 +155,7 @@ class ScheduleAppointmentViewModel : ViewModel(){
                     _leaveDates.value = updatedLeaves
 
                     // Update date status
-                    updateDateStatusForDates(dates, Availability.ONLEAVE)
+                    updateDateStatusForDates(filteredDates, Availability.ONLEAVE)
 
                     // Clear selection
                     _selectedDates.value = emptyList()

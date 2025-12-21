@@ -53,6 +53,7 @@ import androidx.navigation.NavController
 import com.example.qlinic.R
 import com.example.qlinic.data.model.Appointment
 import com.example.qlinic.ui.component.CustomDatePicker
+import com.example.qlinic.ui.component.MarkAsLeaveDialog
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import com.example.qlinic.ui.navigation.SimpleTopBar
@@ -90,6 +91,10 @@ fun SpecificScheduleCalendar(
 
     var appointmentToCancel by remember { mutableStateOf<Appointment?>(null) }
     var showDeletedDialog by remember { mutableStateOf(false) }
+    // local state to control Mark as Leave confirmation dialog (moved up so child lambdas can access it)
+    var showMarkLeaveDialog by remember { mutableStateOf(false) }
+    // show success dialog after marking leave
+    var showMarkLeaveSuccessDialog by remember { mutableStateOf(false) }
 
     // Load data on initial composition
     LaunchedEffect(doctorID) {
@@ -168,6 +173,8 @@ fun SpecificScheduleCalendar(
                             selectedDates = selectedDates,
                             appointmentDates = appointmentDates,
                             leaveDates = leaveDates,
+                            // disallow selecting past dates for marking leave
+                            disablePastDates = true,
                             onDateSelected = { date ->
                                 viewModel.selectDate(date)
                             },
@@ -196,8 +203,16 @@ fun SpecificScheduleCalendar(
                             selectedDates = selectedDates,
                             appointments = appointmentsForSelectedDate,
                             isSelectedDateOnLeave = selectedDate?.let { viewModel.isDateOnLeave(it) } ?: false,
-                            onMarkLeave = { viewModel.markAsLeave(doctorID, selectedDates) },
-                            onCancelLeave = { viewModel.cancelLeave(doctorID, selectedDates) },
+                            onMarkLeave = { showMarkLeaveDialog = true },
+                            onCancelLeave = {
+                                // normalize dates to start-of-day before cancelling
+                                val normalized = selectedDates.map { d ->
+                                    val c = Calendar.getInstance().apply { time = d }
+                                    c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
+                                    c.time
+                                }
+                                viewModel.cancelLeave(doctorID, normalized)
+                            },
                             onClearSelection = { viewModel.selectMultipleDates(emptyList()) }
                         )
                     }
@@ -315,6 +330,37 @@ fun SpecificScheduleCalendar(
             title = "Appointment Deleted",
             message = "Schedule has been successfully updated.",
             onDone = { showDeletedDialog = false }
+        )
+    }
+
+    // Show confirmation dialog for Mark as Leave
+    if (showMarkLeaveDialog) {
+        MarkAsLeaveDialog(
+            show = true,
+            dates = selectedDates,
+            onConfirm = { dates ->
+                // Normalize dates to start-of-day (system default) before calling ViewModel
+                val normalized = dates.map { d ->
+                    val c = Calendar.getInstance().apply { time = d }
+                    c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
+                    c.time
+                }
+                viewModel.markAsLeave(doctorID, normalized)
+                showMarkLeaveDialog = false
+                showMarkLeaveSuccessDialog = true
+            },
+            onDismiss = {
+                showMarkLeaveDialog = false
+            }
+        )
+    }
+
+    // Show success dialog after marking leave
+    if (showMarkLeaveSuccessDialog) {
+        DeletedSuccessDialog(
+            title = "Leave Marked",
+            message = "Selected date(s) have been marked as leave.",
+            onDone = { showMarkLeaveSuccessDialog = false }
         )
     }
 }
@@ -475,6 +521,7 @@ private fun SelectedDateInfo(
                 )
             }
             else -> {
+                // Available - show status with Mark as Leave action in the status card
                 StatusCard(
                     color = Color(0xFFE3F2FD),
                     icon = R.drawable.check,
