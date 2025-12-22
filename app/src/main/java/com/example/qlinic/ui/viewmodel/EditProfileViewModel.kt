@@ -41,6 +41,9 @@ class EditProfileViewModel(
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 
+    // Regex for names: only letters and spaces
+    private val namePattern = Regex("^[A-Za-z\\s]+$")
+
     // Loaders
     fun loadPatient(patientId: String) = viewModelScope.launch {
         _loading.value = true; _error.value = null
@@ -77,19 +80,45 @@ class EditProfileViewModel(
 
     private fun validatePatientInput(firstName: String?, lastName: String?, phone: String?, nric: String?): String? {
         firstName?.let {
-            if (it.length > 10) return "First name must not exceed 10 characters"
+            if (!namePattern.matches(it)) {
+                android.util.Log.d("EditProfileViewModel", "Invalid first name: $it")
+                return "First name must only contain letters and spaces"
+            }
+            if (it.length > 10) {
+                android.util.Log.d("EditProfileViewModel", "First name too long: $it")
+                return "First name must not exceed 10 characters"
+            }
         }
         lastName?.let {
-            if (it.length > 20) return "Last name must not exceed 20 characters"
+            if (!namePattern.matches(it)) {
+                android.util.Log.d("EditProfileViewModel", "Invalid last name: $it")
+                return "Last name must only contain letters and spaces"
+            }
+            if (it.length > 20) {
+                android.util.Log.d("EditProfileViewModel", "Last name too long: $it")
+                return "Last name must not exceed 20 characters"
+            }
         }
         phone?.let {
-            if (it.any { ch -> !ch.isDigit() }) return "Phone number must contain only digits"
-            if (!it.startsWith("1")) return "Phone number must start with 1"
-            if (it.length !in 9..10) return "Phone number must be 9-10 digits"
+            if (it.any { ch -> !ch.isDigit() }) {
+                android.util.Log.d("EditProfileViewModel", "Invalid phone: $it")
+                return "Phone number must contain only digits"
+            }
+            if (!it.startsWith("1")) {
+                android.util.Log.d("EditProfileViewModel", "Phone does not start with 1: $it")
+                return "Phone number must start with 1"
+            }
+            if (it.length !in 9..10) {
+                android.util.Log.d("EditProfileViewModel", "Phone wrong length: $it")
+                return "Phone number must be 9-10 digits"
+            }
         }
         nric?.let {
             val nricPattern = Regex("^\\d{6}-\\d{2}-\\d{4}$")
-            if (!nricPattern.matches(it)) return "NRIC must be in format 000000-00-0000"
+            if (!nricPattern.matches(it)) {
+                android.util.Log.d("EditProfileViewModel", "Invalid NRIC: $it")
+                return "NRIC must be in format 000000-00-0000"
+            }
         }
         return null
     }
@@ -118,7 +147,8 @@ class EditProfileViewModel(
 
     // Patient update
     fun updatePatientPartial(patientId: String, candidateValues: Map<String, String>) {
-        val current = _patient.value ?: run { _error.value = "No patient loaded"; return }
+        android.util.Log.d("EditProfileViewModel", "updatePatientPartial called with: $candidateValues")
+        val current = _patient.value ?: run { _error.value = "No patient loaded"; android.util.Log.d("EditProfileViewModel", "No patient loaded"); return }
 
         val firstCandidate = candidateValues["FirstName"]
         val lastCandidate = candidateValues["LastName"]
@@ -126,6 +156,7 @@ class EditProfileViewModel(
         val icCandidate = candidateValues["IC"]
 
         validatePatientInput(firstCandidate, lastCandidate, phoneCandidate, icCandidate)?.let { err ->
+            android.util.Log.d("EditProfileViewModel", "Setting error: $err")
             _error.value = err
             return
         }
@@ -174,6 +205,7 @@ class EditProfileViewModel(
                 }
             } catch (t: Throwable) {
                 _error.value = "Failed to update patient: ${t.message}"
+                android.util.Log.d("EditProfileViewModel", "Exception: ${t.message}")
             } finally {
                 _loading.value = false
             }
@@ -184,12 +216,24 @@ class EditProfileViewModel(
     // Staff update
     fun updateStaffPartial(staffId: String, updatesInput: Map<String, Any>) {
         val current = _staff.value ?: run { _error.value = "No staff loaded"; return }
+        // --- VALIDATION BEFORE LAUNCH ---
+        val firstCandidate = updatesInput["FirstName"] as? String
+        val lastCandidate = updatesInput["LastName"] as? String
+        if (firstCandidate != null && !namePattern.matches(firstCandidate)) {
+            android.util.Log.d("EditProfileViewModel", "Invalid staff first name: $firstCandidate")
+            _error.value = "First name must contain only letters and spaces"
+            return
+        }
+        if (lastCandidate != null && !namePattern.matches(lastCandidate)) {
+            android.util.Log.d("EditProfileViewModel", "Invalid staff last name: $lastCandidate")
+            _error.value = "Last name must contain only letters and spaces"
+            return
+        }
+        // --- END VALIDATION ---
         viewModelScope.launch {
             _loading.value = true; _error.value = null
             try {
                 // Uniqueness checks for ClinicStaff (used by staff and doctor personal profile)
-                val firstCandidate = updatesInput["FirstName"] as? String
-                val lastCandidate = updatesInput["LastName"] as? String
                 if (firstCandidate != null || lastCandidate != null) {
                     val newFirst = firstCandidate ?: current.firstName
                     val newLast = lastCandidate ?: current.lastName
@@ -292,6 +336,11 @@ class EditProfileViewModel(
             } catch (t: Throwable) { _error.value = t.message }
             finally { _loading.value = false }
         }
+    }
+
+    fun clearError() {
+        android.util.Log.d("EditProfileViewModel", "Clearing error")
+        _error.value = null
     }
 
 }

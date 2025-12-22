@@ -146,11 +146,7 @@ fun AppNavigation() {
 
             BookAppt(
                 doctorId = doctorId,
-                onUpClick = {
-                    navController.navigate(Routes.Home.route) {
-                        popUpTo(Routes.Home.route) { inclusive = true }
-                    }
-                },
+                onUpClick = { navController.navigateUp() },
                 isStaff = isStaff,
                 viewModel = bookApptViewModel
             )

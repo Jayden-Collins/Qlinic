@@ -1,24 +1,38 @@
 package com.example.qlinic.ui.screen
 
 import android.util.Log
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,10 +41,9 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.qlinic.R
 import com.example.qlinic.ui.navigation.Routes
+import com.example.qlinic.ui.navigation.Routes.Home.editProfileRoute
 import com.example.qlinic.ui.viewmodel.ProfileViewModel
 import com.google.firebase.auth.FirebaseAuth
-import androidx.compose.runtime.setValue
-import com.example.qlinic.ui.navigation.Routes.Home.editProfileRoute
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +56,6 @@ fun ProfileScreen(
     onNotificationClick: () -> Unit
 ) {
     val authUid = FirebaseAuth.getInstance().currentUser?.uid
-    val context = LocalContext.current
 
     val roleLower = role.lowercase()
 
@@ -142,17 +154,19 @@ fun ProfileScreen(
                                 .align(Alignment.Center)
                         )
                     } else {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_profile),
+                        Icon(
+                            imageVector = Icons.Default.Person,
                             contentDescription = "Profile",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(100.dp).clip(CircleShape)
+                            modifier = Modifier
+                                .size(100.dp)
+                                .clip(CircleShape)
                                 .border(
                                     width = 3.dp,
                                     color = Color(0xFFBBBBBB),
                                     shape = CircleShape
                                 )
-                                .align(Alignment.Center)
+                                .align(Alignment.Center),
+                            tint = Color.Gray
                         )
                     }
                 }

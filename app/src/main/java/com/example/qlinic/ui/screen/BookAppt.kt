@@ -204,6 +204,7 @@ fun BookAppt(
         val newPatientGender by viewModel.newPatientGender.collectAsState()
         val newPatientIc by viewModel.newPatientIc.collectAsState()
         val newPatientPhoneNumber by viewModel.newPatientPhoneNumber.collectAsState()
+        val newPatientError by viewModel.newPatientError.collectAsState()
 
         NewPatientDetailsPopup(
             firstName = newPatientFirstName,
@@ -217,7 +218,8 @@ fun BookAppt(
             phoneNumber = newPatientPhoneNumber,
             onPhoneNumberChange = { viewModel.onNewPatientInfoChanged(phone = it) },
             onContinue = { viewModel.onCreateNewPatient() },
-            onBack = { viewModel.backToPatientTypeSelection() }
+            onBack = { viewModel.backToPatientTypeSelection() },
+            error = newPatientError
         )
     }
 
@@ -411,7 +413,8 @@ private fun NewPatientDetailsPopup(
     phoneNumber: String,
     onPhoneNumberChange: (String) -> Unit,
     onContinue: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    error: String?
 ) {
     Popup(
         alignment = Alignment.Center,
@@ -443,6 +446,14 @@ private fun NewPatientDetailsPopup(
                     GenderField(selectedGender = gender, onGenderSelected = { gender -> onGenderChange(gender) })
                     IcField(value = ic, onValueChange = onIcChange)
                     PhoneNumberField(phoneNumber = phoneNumber, onPhoneNumberChange = onPhoneNumberChange)
+                }
+                if (error != null) {
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
                 Spacer(Modifier.height(24.dp))
                 Row(

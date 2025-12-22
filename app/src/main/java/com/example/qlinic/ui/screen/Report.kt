@@ -186,21 +186,13 @@ fun ReportContent(
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
+                // Department filter is now disabled and always set to "All Department"
                 FilterDropdown(
                     stringResource(R.string.department_filter_label),
-                    listOf(
-                        "All Department",
-                        "Cardiology",
-                        "Dermatology",
-                        "Gastroenterology",
-                        "Gynecologist",
-                        "Neurology",
-                        "Orthopedics"
-                    ),
-                    filterState.selectedDepartment
-                ) {
-                    onDepartmentChange(it)
-                }
+                    listOf("All Department"), // Only one option
+                    "All Department", // Always selected
+                    enabled = false // Disable the dropdown
+                ) { }
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Stats
@@ -451,31 +443,3 @@ fun BarChartWithAxis(
     }
 }
 
-@Preview(showBackground = true, name = "Report Screen Default")
-@Composable
-fun PreviewReportScreen() {
-    QlinicTheme {
-        ReportContent(
-            paddingValues = PaddingValues(0.dp),
-            isLoading = false,
-            filterState = ReportFilterState(),
-            stats = AppointmentStatistics(50, 48, 2),
-            peakHoursReportData = PeakHoursReportData(
-                chartData = listOf(
-                    ChartData(12f, "Mon", Color(0xFFB0C4DE)),
-                    ChartData(18f, "Tue", Color(0xFFB0C4DE)),
-                    ChartData(25f, "Wed", Color(0xFF4682B4)),
-                    ChartData(15f, "Thu", Color(0xFFB0C4DE)),
-                    ChartData(22f, "Fri", Color(0xFFB0C4DE)),
-                    ChartData(8f, "Sat", Color(0xFFB0C4DE))
-                ),
-                busiestDay = "Wednesday",
-                busiestTime = "10 AM - 11 AM"
-            ),
-            dateRangeError = null,
-            onFilterTypeChange = {},
-            onDepartmentChange = {},
-            onDateChange = { _, _ -> }
-        )
-    }
-}

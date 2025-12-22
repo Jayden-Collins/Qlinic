@@ -457,14 +457,24 @@ class FirestoreAppointmentRepository : AppointmentRepository {
             val chartData: List<com.example.qlinic.data.model.ChartData>
             var busiestTime = "No Data"
 
+            // Get slot IDs for those doctors if filtering by department
+            val slotIds = if (department != "All Department" && doctorIds.isNotEmpty()) {
+                val slotSnapshot = db.collection("Slot")
+                    .whereIn("DoctorID", doctorIds)
+                    .get().await()
+                slotSnapshot.documents.mapNotNull { it.getString("SlotID") }
+            } else {
+                emptyList()
+            }
+
             val baseQuery = db.collection("Appointment")
                 .whereGreaterThanOrEqualTo("appointmentDate", com.google.firebase.Timestamp(startDate))
                 .whereLessThanOrEqualTo("appointmentDate", com.google.firebase.Timestamp(endDate))
 
-            val finalQuery = if (department != "All Department" && doctorIds.isNotEmpty()) {
-                baseQuery.whereIn("doctorId", doctorIds)
-            } else if (department != "All Department" && doctorIds.isEmpty()) {
-                baseQuery.whereEqualTo("doctorId", "impossible_value")
+            val finalQuery = if (department != "All Department" && slotIds.isNotEmpty()) {
+                baseQuery.whereIn("slotId", slotIds)
+            } else if (department != "All Department" && slotIds.isEmpty()) {
+                baseQuery.whereEqualTo("slotId", "impossible_value")
             } else {
                 baseQuery
             }

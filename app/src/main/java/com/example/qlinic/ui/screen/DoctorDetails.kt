@@ -108,7 +108,7 @@ fun DoctorDetailsLayout(
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 16.dp)
                         .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.buttonColors(containerColor = com.example.qlinic.ui.theme.teal),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("Book Appointment", fontSize = 16.sp, color = Color.White)

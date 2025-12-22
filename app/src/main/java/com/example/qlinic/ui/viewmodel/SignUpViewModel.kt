@@ -49,6 +49,11 @@ class SignupViewModel(
         if (s.firstName.isBlank() || s.lastName.isBlank() || s.nric.isBlank() || s.email.isBlank() || s.password.isBlank() || s.confirmPassword.isBlank() || s.gender.isBlank() || s.phone.isBlank()) {
             return "Please fill all fields"
         }
+        //Names must contain only letters and spaces
+        val namePattern = Regex("^[A-Za-z\\s]+$")
+        if (!namePattern.matches(s.firstName)) return "First name must contain only letters and spaces"
+        if (!namePattern.matches(s.lastName)) return "Last name must contain only letters and spaces"
+
         if (s.firstName.length > 10) return "First name must not exceed 10 characters"
         if (s.lastName.length > 20) return "Last name must not exceed 20 characters"
         if (!Patterns.EMAIL_ADDRESS.matcher(s.email).matches()) return "Invalid email format"

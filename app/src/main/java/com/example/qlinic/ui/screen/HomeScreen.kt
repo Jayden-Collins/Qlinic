@@ -278,7 +278,7 @@ fun AppointmentCard(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (uiItem.displayImageUrl != null) {
+                if (uiItem.displayImageUrl != "") {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(uiItem.displayImageUrl)
@@ -298,10 +298,11 @@ fun AppointmentCard(
                             .background(MaterialTheme.colorScheme.onPrimary, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = uiItem.displayName.take(1),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_profile),
+                            contentDescription = "Default User Icon",
+                            tint = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(48.dp)
                         )
                     }
                 }
@@ -345,8 +346,8 @@ fun AppointmentCard(
                 Button(
                     onClick = { onActionClick(uiItem.id, "ReBook") },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.outline, // Light Grey
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant // Dark Text
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     modifier = Modifier.fillMaxWidth() // Full Width
                 ) {
@@ -362,8 +363,8 @@ fun AppointmentCard(
                         onClick = { onActionClick(uiItem.id, "Cancel") },
                         enabled = uiItem.isActionEnabled,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.onBackground,
-                            contentColor = MaterialTheme.colorScheme.onSecondary
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onBackground
                         ),
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         modifier = Modifier.weight(1f)
@@ -375,8 +376,8 @@ fun AppointmentCard(
                         onClick = { onActionClick(uiItem.id, "Reschedule") },
                         enabled = uiItem.isActionEnabled,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.onSecondary,
-                            contentColor = MaterialTheme.colorScheme.onBackground
+                            containerColor = MaterialTheme.colorScheme.onBackground,
+                            contentColor = MaterialTheme.colorScheme.onSecondary
                         ),
                         contentPadding = PaddingValues(horizontal = 4.dp),
                         modifier = Modifier.weight(1f)

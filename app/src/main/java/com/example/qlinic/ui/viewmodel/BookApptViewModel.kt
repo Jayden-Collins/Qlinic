@@ -353,12 +353,12 @@ class BookApptViewModel(private val sessionManager: SessionManager) : ViewModel(
     }
 
     fun confirmBooking(isStaff: Boolean, doctorId: String, symptoms: String) {
-        Log.d("BookApptViewModel", "confirmBooking: Attempting to book. Current selected slot is \\${_selectedSlot.value}")
+        Log.d("BookApptViewModel", "confirmBooking: Attempting to book. Current selected slot is ${_selectedSlot.value}")
         viewModelScope.launch {
             try {
                 _showSymptomsPopup.value = false
                 val slot = _selectedSlot.value
-                Log.d("BookApptViewModel", "confirmBooking: Selected slot: \\${slot}")
+                Log.d("BookApptViewModel", "confirmBooking: Selected slot: ${slot}")
                 if (slot == null) {
                     Log.e("BookApptViewModel", "confirmBooking: FAILED. Reason: _selectedSlot.value is null.")
                     _bookingError.value = "Please select a time slot."
@@ -366,18 +366,18 @@ class BookApptViewModel(private val sessionManager: SessionManager) : ViewModel(
                 }
 
                 val selectedDateAsDate = _selectedDate.value
-                Log.d("BookApptViewModel", "confirmBooking: Selected date: \\${selectedDateAsDate}")
+                Log.d("BookApptViewModel", "confirmBooking: Selected date: ${selectedDateAsDate}")
 
                 // Convert java.util.Date to java.time.LocalDate
                 val localDate = selectedDateAsDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
                 val time = LocalTime.parse(slot.SlotStartTime)
                 val localDateTime = LocalDateTime.of(localDate, time)
                 val appointmentDateTime = Date.from(localDateTime.atZone(ZoneId.systemDefault()).toInstant())
-                Log.d("BookApptViewModel", "confirmBooking: Appointment date/time: \\${appointmentDateTime}")
+                Log.d("BookApptViewModel", "confirmBooking: Appointment date/time: ${appointmentDateTime}")
 
                 val currentUserId = sessionManager.getSavedUserId() ?: ""
                 val finalPatientId = if (isStaff) _bookingPatientId.value else currentUserId
-                Log.d("BookApptViewModel", "confirmBooking: Final patient ID: \\${finalPatientId}")
+                Log.d("BookApptViewModel", "confirmBooking: Final patient ID: ${finalPatientId}")
 
                 if (finalPatientId.isNullOrEmpty()) {
                     Log.e("BookApptViewModel", "confirmBooking: Patient ID is null or empty.")
@@ -400,10 +400,10 @@ class BookApptViewModel(private val sessionManager: SessionManager) : ViewModel(
                 Log.d("BookApptViewModel", "confirmBooking: bookAppointment result: \\${isSuccess}")
                 if (isSuccess) {
                     val staffMember = clinicStaffRepository.getStaffMember(doctorId)
-                    val doctorName = staffMember?.let { "Dr. \\${it.firstName} \\${it.lastName}" } ?: "the doctor"
+                    val doctorName = staffMember?.let { "Dr. ${it.firstName} ${it.lastName}" } ?: "the doctor"
 
                     val patient = patientRepository.getPatient(finalPatientId)
-                    val patientName = patient?.let { "\\${it.firstName} \\${it.lastName}" } ?: "the patient"
+                    val patientName = patient?.let { "${it.firstName} ${it.lastName}" } ?: "the patient"
 
                     val formattedDate = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(appointmentDateTime)
                     val formattedTime = formatTime(slot.SlotStartTime)
@@ -418,7 +418,7 @@ class BookApptViewModel(private val sessionManager: SessionManager) : ViewModel(
                 }
             } catch (e: Exception) {
                 Log.e("BookApptViewModel", "confirmBooking failed", e)
-                _bookingError.value = "An unexpected error occurred: \\${e.message}"
+                _bookingError.value = "An unexpected error occurred: ${e.message}"
             }
         }
     }

@@ -48,6 +48,7 @@ fun RescheduleAppointmentScreen(
     // slots state
     var availableSlots by remember { mutableStateOf<List<Slot>>(emptyList()) }
     var selectedSlot by remember { mutableStateOf<Slot?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
     // dialogs
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -70,28 +71,30 @@ fun RescheduleAppointmentScreen(
     LaunchedEffect(normalizedSelectedDate, doctorId) {
         // clear previous selection whenever date changes
         selectedSlot = null
-
+        isLoading = true
         val date = normalizedSelectedDate
         if (date == null) {
             availableSlots = emptyList()
+            isLoading = false
             return@LaunchedEffect
         }
-
         try {
             // Fetch availability for the selected month immediately if not loaded
             viewModel.loadLeaveDates(doctorId, date)
             viewModel.loadAvailabilityExceptions(doctorId)
         } catch (_: Exception) { }
-
         try {
             viewModel.listenForSlots(doctorId, date).collectLatest { slots ->
                 availableSlots = slots
+                isLoading = false
                 if (selectedSlot != null && slots.none { it.SlotID == selectedSlot?.SlotID }) {
                     selectedSlot = null
                 }
             }
         } catch (_: CancellationException) {
+            isLoading = false
         } catch (e: Exception) {
+            isLoading = false
             errorMsg = e.message ?: "Error loading time slots"
         }
     }
@@ -170,7 +173,14 @@ fun RescheduleAppointmentScreen(
 
             Text("Select Time Slot", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
-            if (availableSlots.isEmpty()) {
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (availableSlots.isEmpty()) {
                 Text("No available time slots for selected date.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 TimeSlotGrid(
@@ -258,7 +268,7 @@ private fun TimeSlotGrid(
                     Text(
                         text = formatSlotLabel(slot.SlotStartTime),
                         color = if (isSelected) white else MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.labelMedium
                     )
                 }
             }

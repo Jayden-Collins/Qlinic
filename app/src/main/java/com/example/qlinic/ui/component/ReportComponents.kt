@@ -43,6 +43,7 @@ fun FilterDropdown(
     label: String,
     options: List<String>,
     selectedOption: String,
+    enabled: Boolean = true,
     onOptionSelected: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -56,13 +57,14 @@ fun FilterDropdown(
         )
         ExposedDropdownMenuBox(
             expanded = expanded,
-            onExpandedChange = { expanded = !expanded },
+            onExpandedChange = { if (enabled) expanded = !expanded },
             modifier = Modifier.weight(1f)
         ) {
             OutlinedTextField(
                 value = selectedOption,
                 onValueChange = {},
                 readOnly = true,
+                enabled = enabled,
                 textStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp),
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 modifier = Modifier.menuAnchor().fillMaxWidth(),

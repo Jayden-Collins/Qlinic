@@ -108,13 +108,13 @@ class ReportViewModel : ViewModel() {
                 // Fetch both statistics and peak hours data from the repository in parallel.
                 val statsResult = repository.getStatistics(
                     currentFilters.selectedType,
-                    currentFilters.selectedDepartment,
+                    "All Department",
                     currentFilters.startDate,
                     currentFilters.endDate
                 )
                 val peakHoursResult = repository.getPeakHoursReportData(
                     currentFilters.selectedType,
-                    currentFilters.selectedDepartment,
+                    "All Department",
                     currentFilters.startDate,
                     currentFilters.endDate
                 )

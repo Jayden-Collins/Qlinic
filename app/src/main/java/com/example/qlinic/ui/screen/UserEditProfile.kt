@@ -94,6 +94,9 @@ fun EditProfileScreen(
     val doctorState by viewModel.doctor.collectAsState(initial = null)
     val loading by viewModel.loading.collectAsState(initial = false)
     val error by viewModel.error.collectAsState(initial = null)
+    LaunchedEffect(error) {
+        android.util.Log.d("UserEditProfile", "UI observed error: $error")
+    }
 
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
