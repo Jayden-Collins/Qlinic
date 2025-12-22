@@ -60,7 +60,7 @@ fun BottomNavBar(
             navigationItems.filter { it.label != "Report" }
         }
         UserRole.DOCTOR -> {
-            // Doctor see only Home & Profile
+            // Doctors see only Home & Profile
             navigationItems.filter { it.label != "Report" &&  it.label != "Schedule" }
         }
         else -> {
@@ -68,16 +68,26 @@ fun BottomNavBar(
             navigationItems
         }
     }
-    MaterialTheme.colorScheme.primary
-    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-    MaterialTheme.colorScheme.surface
 
     Column {
         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
         NavigationBar(containerColor = MaterialTheme.colorScheme.onPrimary) {
             visibleItems.forEach { item ->
+                val isSelected = when (item.route) {
+                    Routes.Home.route -> currentRoute == Routes.Home.route
+                    Routes.Schedule.route -> {
+                        currentRoute == Routes.Schedule.route || 
+                        currentRoute == Routes.DoctorCalendar.route ||
+                        currentRoute?.startsWith("doctor_appointment_schedule") == true ||
+                        currentRoute?.startsWith("doctor_appointment_reschedule") == true
+                    }
+                    Routes.Report.route -> currentRoute == Routes.Report.route
+                    Routes.Profile.route -> currentRoute?.startsWith("profile") == true
+                    else -> currentRoute == item.route
+                }
+
                 NavigationBarItem(
-                    selected = (currentRoute == item.route),
+                    selected = isSelected,
                     onClick = { navigationActions[item.route]?.invoke() },
                     icon = {
                         Icon(

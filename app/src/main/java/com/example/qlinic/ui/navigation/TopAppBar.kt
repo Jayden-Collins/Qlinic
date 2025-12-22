@@ -25,7 +25,7 @@ import com.example.qlinic.R
 @Composable
 fun TopBar(navController: NavController){
 
-    val onNotificationClick = { navController.navigate(Routes.Notification.route) }
+    val onNotificationClick = { navController.navigate(Routes.Notifications.route) }
 
     TopAppBar(
         title = {

@@ -13,20 +13,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.qlinic.R
-import com.example.qlinic.ui.theme.DarkBlue
-import com.example.qlinic.ui.theme.LightGrey
-import com.example.qlinic.ui.theme.white
+import com.example.qlinic.ui.theme.darkblue
+import com.example.qlinic.ui.theme.grey
 
 @Composable
 fun BottomNavBar(navController: NavController) {
     // get current route to determine which item is selected
     val currentRoute = navController.currentDestination?.route
-    val selectedColor = DarkBlue
-    val unselectedColor = DarkBlue
+    val selectedColor = darkblue
+    val unselectedColor = darkblue
 
     Column {
         HorizontalDivider(
-            color = LightGrey,
+            color = grey,
             thickness = 1.dp,
         )
         NavigationBar(

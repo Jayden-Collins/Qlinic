@@ -1,8 +1,8 @@
-package com.example.qlinic.ui.viewModels
+package com.example.qlinic.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.qlinic.data.model.Doctor
 import com.example.qlinic.data.model.SpecificDoctorInfo
 import com.example.qlinic.data.repository.DoctorSchedule
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,4 +47,16 @@ class DoctorScheduleViewModel(
         }
     }
 
+}
+
+class DoctorScheduleViewModelFactory(
+    private val doctorRepository: DoctorSchedule
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(DoctorScheduleViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return DoctorScheduleViewModel(doctorRepository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
 }

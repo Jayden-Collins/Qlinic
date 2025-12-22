@@ -56,6 +56,12 @@ class SlotRepository {
                 val allSlots = slotsSnapshot.documents.mapNotNull { it.toObject(Slot::class.java) }
                 Log.d("SlotRepository", "Fetched ${allSlots.size} slots for doctor $doctorID on $date")
 
+                // Log all fetched slots
+                Log.d("SlotRepository", "Fetched slots:")
+                allSlots.forEach { slot ->
+                    Log.d("SlotRepository", "SlotID=${slot.SlotID}, StartTime=${slot.SlotStartTime}, DayOfWeek=${slot.DayOfWeek}")
+                }
+
                 // Launch a coroutine to handle asynchronous filtering
                 launch {
                     try {
@@ -67,10 +73,17 @@ class SlotRepository {
                             .await()
 
                         val bookedSlotIDs = appointmentSnapshot.documents
-                            .mapNotNull { it.toObject(Appointment::class.java)?.slotId }
+                            .filter { doc ->
+                                val status = doc.getString("status")
+                                Log.d("SlotRepository", "AppointmentID=${doc.id}, Status=$status")
+                                status != "Cancelled" && status != "No Show"
+                            }
+                            .mapNotNull { it.getString("slotId") }
                             .toSet()
-                        Log.d("SlotRepository", "Successfully fetched ${bookedSlotIDs.size} booked appointments.")
+                        Log.d("SlotRepository", "Successfully fetched ${bookedSlotIDs.size} booked appointments (excluding cancelled/no_show).")
 
+                        // Log booked slot IDs
+                        Log.d("SlotRepository", "Booked slot IDs: $bookedSlotIDs")
 
                         // 2. Fetch availability exceptions for the day
                         val exceptions = availabilityExceptionRepository
@@ -80,34 +93,52 @@ class SlotRepository {
                         // 3. Filter slots
                         val availableSlots = allSlots.filter { slot ->
                             val isBooked = bookedSlotIDs.contains(slot.SlotID)
-                            if (isBooked) return@filter false
-
-                            // Check if the slot falls within any exception period
-                            val slotTimeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-                            val slotStartTime = slotTimeFormat.parse(slot.SlotStartTime)
-
-                            val slotStartCalendar = Calendar.getInstance().apply {
-                                time = date // Base date
-                                val startCal = Calendar.getInstance().apply { time = slotStartTime!! }
-                                set(Calendar.HOUR_OF_DAY, startCal.get(Calendar.HOUR_OF_DAY))
-                                set(Calendar.MINUTE, startCal.get(Calendar.MINUTE))
-                                set(Calendar.SECOND, 0)
-                                set(Calendar.MILLISECOND, 0)
+                            if (isBooked) {
+                                Log.d("SlotRepository", "SlotID=${slot.SlotID} excluded: booked")
+                                return@filter false
                             }
 
-                            val slotEndCalendar = Calendar.getInstance().apply {
-                                time = slotStartCalendar.time
-                                add(Calendar.MINUTE, 30) // Assuming 30-minute slots
-                            }
+                            try {
+                                // Check if the slot falls within any exception period
+                                val slotTimeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+                                val slotStartTime = slotTimeFormat.parse(slot.SlotStartTime)
 
-                            val isUnavailable = exceptions.any { exception ->
-                                val exceptionStart = exception.startDateTime
-                                val exceptionEnd = exception.endDateTime
-                                // Check for overlap: (slotStart < exceptionEnd) and (slotEnd > exceptionStart)
-                                slotStartCalendar.time.before(exceptionEnd) && slotEndCalendar.time.after(exceptionStart)
-                            }
+                                val slotStartCalendar = Calendar.getInstance().apply {
+                                    time = date // Base date
+                                    val startCal = Calendar.getInstance().apply { time = slotStartTime!! }
+                                    set(Calendar.HOUR_OF_DAY, startCal.get(Calendar.HOUR_OF_DAY))
+                                    set(Calendar.MINUTE, startCal.get(Calendar.MINUTE))
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }
 
-                            !isUnavailable
+                                val slotEndCalendar = Calendar.getInstance().apply {
+                                    time = slotStartCalendar.time
+                                    add(Calendar.MINUTE, 30) // Assuming 30-minute slots
+                                }
+
+                                val isUnavailable = exceptions.any { exception ->
+                                    val exceptionStart = exception.startDateTime
+                                    val exceptionEnd = exception.endDateTime
+                                    slotStartCalendar.time.before(exceptionEnd) && slotEndCalendar.time.after(exceptionStart)
+                                }
+
+                                if (isUnavailable) {
+                                    Log.d("SlotRepository", "SlotID=${slot.SlotID} excluded: unavailable (exception overlap)")
+                                } else {
+                                    Log.d("SlotRepository", "SlotID=${slot.SlotID} included")
+                                }
+                                !isUnavailable
+                            } catch (e: Exception) {
+                                Log.d("SlotRepository", "SlotID=${slot.SlotID} excluded: exception: ${e.message}")
+                                false
+                            }
+                        }
+
+                        // Log available slots after filtering
+                        Log.d("SlotRepository", "Available slots after filtering:")
+                        availableSlots.forEach { slot ->
+                            Log.d("SlotRepository", "SlotID=${slot.SlotID}, StartTime=${slot.SlotStartTime}, DayOfWeek=${slot.DayOfWeek}")
                         }
 
                         Log.d("SlotRepository", "Final available slots count: ${availableSlots.size}. Sending to flow.")

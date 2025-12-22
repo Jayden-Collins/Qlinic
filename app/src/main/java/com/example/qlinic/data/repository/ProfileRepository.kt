@@ -132,10 +132,10 @@ class ProfileRepository(
                 }
 
                 val email = doc.getStringAny("Email", "email") ?: ""
-                val firstName = doc.getStringAny("FirstName", "Firstname", "first_name", "firstName") ?: ""
-                val lastName = doc.getStringAny("LastName", "Lastname", "last_name", "lastName")
+                val firstName = doc.getStringAny("FirstName", "Firstname", "firstName") ?: ""
+                val lastName = doc.getStringAny("LastName", "Lastname", "lastName")
                 val gender = doc.getStringAny("Gender", "gender")
-                val imageUrl = doc.getStringAny("ImageUrl", "image_url", "photoUrl", "photo", "photo_url")
+                val imageUrl = doc.getStringAny("ImageUrl", "image_url", "photo", "photo_url")
                 val phone = doc.getStringAny("PhoneNumber", "Phone", "phoneNumber", "phone")
                 val isActive = doc.getBoolean("isActive") ?: doc.getBoolean("IsActive") ?: false
 

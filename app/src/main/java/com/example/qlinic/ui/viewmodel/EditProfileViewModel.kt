@@ -272,15 +272,15 @@ class EditProfileViewModel(
                     else -> repo.uploadProfilePhoto("Patient", id, fileUri)
                 }
                 if (!url.isNullOrBlank()) {
-                    val key = "photoUrl"
+                    val key = "ImageUrl"
                     when (role.lowercase()) {
                         "staff" -> {
                             repo.updateClinicStaffFields(id, mapOf(key to url))
                             _staff.value = repo.getClinicStaff(id)
                         }
                         "doctor" -> {
-                            repo.updateDoctorFields(id, mapOf(key to url))
-                            _doctor.value = repo.getDoctor(id)
+                            repo.updateClinicStaffFields(id, mapOf(key to url))
+                            _staff.value = repo.getClinicStaff(id)
                         }
                         else -> {
                             repo.updatePatientFields(id, mapOf(key to url))

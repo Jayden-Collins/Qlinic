@@ -19,6 +19,8 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     // Pass sessionManager to repository
     private val repo = ProfileRepository(sessionManager)
+    private val patientRepository = PatientRepository()
+
 
     // common fields (used by patient/staff/doctor)
     val firstName: MutableState<String?> = mutableStateOf(null)
@@ -43,12 +45,14 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     // Store staffId for navigation
     val currentStaffId: MutableState<String?> = mutableStateOf(null)
+    val currentPatientId: MutableState<String?> = mutableStateOf(null)
 
     fun loadPatient(userId: String? = null) {
         isLoading.value = true
         isDoctor.value = false
         isStaff.value = false
         currentStaffId.value = null
+        currentPatientId.value = userId
 
         viewModelScope.launch {
             repo.fetchPatient(userId) { profile ->
@@ -59,6 +63,11 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     email.value = profile.email
                     phoneNumber.value = profile.phoneNumber
                     gender.value = profile.gender
+                    userId?.let {
+                        viewModelScope.launch {
+                            patientRepository.onLogin(it)
+                        }
+                    }
                 } else {
                     firstName.value = null
                     lastName.value = null
@@ -129,15 +138,23 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         description.value = null
         specialization.value = null
         yearsOfExp.value = null
+        currentPatientId.value = null
     }
 
     fun logout() {
-        // Call repository logout
-        repo.signOut()
+        viewModelScope.launch {
+            if (!isDoctor.value && !isStaff.value) { // This indicates a patient
+                currentPatientId.value?.let { patientId ->
+                    patientRepository.onLogout(patientId)
+                }
+            }
+            // Call repository logout
+            repo.signOut()
 
-        // Optionally clear viewmodel state
-        resetAllFields()
+            // Optionally clear viewmodel state
+            resetAllFields()
 
-        Log.d("ProfileViewModel", "Logout completed")
+            Log.d("ProfileViewModel", "Logout completed")
+        }
     }
 }

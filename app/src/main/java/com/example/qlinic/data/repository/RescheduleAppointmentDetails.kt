@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Date
+import java.util.Locale
 
 class RescheduleAppointmentDetails {
     private val firestore: FirebaseFirestore = Firebase.firestore
@@ -29,12 +30,12 @@ class RescheduleAppointmentDetails {
 
             snapshot.documents.mapNotNull { doc ->
                 try {
-                    val endTs = doc.getTimestamp("endDateTime") ?: Timestamp(0, 0)
+                    val endTs = doc.getTimestamp("endDateTime")?.toDate() ?: Date(0)
                     // filter out already expired exceptions on the client side
-                    if (endTs.seconds >= nowTs.seconds) {
+                    if (endTs.after(nowTs.toDate())) {
                         AvailabilityException(
                             exceptionID = doc.getString("exceptionID") ?: doc.id,
-                            startDateTime = doc.getTimestamp("startDateTime") ?: Timestamp.now(),
+                            startDateTime = doc.getTimestamp("startDateTime")?.toDate() ?: Date(),
                             endDateTime = endTs,
                             reason = doc.getString("reason") ?: "",
                             doctorID = doc.getString("doctorID") ?: "",
@@ -130,11 +131,15 @@ class RescheduleAppointmentDetails {
                                 .await()
 
                             val bookedSlotIDs = appointmentSnapshot.documents
+                                .filter { doc ->
+                                    val status = doc.getString("status")
+                                    status != "Cancelled" && status != "No Show"
+                                }
                                 .mapNotNull { it.getString("slotId") }
                                 .toSet()
                             android.util.Log.d(
                                 "SlotRepository",
-                                "Successfully fetched ${bookedSlotIDs.size} booked appointments."
+                                "Successfully fetched ${bookedSlotIDs.size} booked appointments (excluding cancelled/no_show)."
                             )
 
                             // reuse repository method in this class to get exceptions and filter by day range
@@ -145,8 +150,8 @@ class RescheduleAppointmentDetails {
                             }
 
                             val exceptions = exceptionsAll.filter { ex ->
-                                val exStart = ex.startDateTime.toDate()
-                                val exEnd = ex.endDateTime.toDate()
+                                val exStart = ex.startDateTime
+                                val exEnd = ex.endDateTime
                                 // overlap with day
                                 exStart.before(endOfDay) && exEnd.after(startOfDay)
                             }
@@ -188,8 +193,8 @@ class RescheduleAppointmentDetails {
                                     val slotEndCal = java.util.Calendar.getInstance().apply { time = slotStartCal.time; add(java.util.Calendar.MINUTE, 30) }
 
                                     val isUnavailable = exceptions.any { ex ->
-                                        val exStart = ex.startDateTime.toDate()
-                                        val exEnd = ex.endDateTime.toDate()
+                                        val exStart = ex.startDateTime
+                                        val exEnd = ex.endDateTime
                                         slotStartCal.time.before(exEnd) && slotEndCal.time.after(exStart)
                                     }
 
@@ -199,11 +204,13 @@ class RescheduleAppointmentDetails {
                                 }
                             }
 
+                            // Sort available slots by start time
+                            val sortedSlots = availableSlots.sortedBy { it.SlotStartTime }
                             android.util.Log.d(
                                 "SlotRepository",
-                                "Final available slots count: ${availableSlots.size}. Sending to flow."
+                                "Final available slots count: ${sortedSlots.size}. Sending to flow."
                             )
-                            producer.trySend(availableSlots)
+                            producer.trySend(sortedSlots)
                         } catch (e: Exception) {
                             android.util.Log.e("SlotRepository", "Error filtering slots", e)
                             producer.close(e)

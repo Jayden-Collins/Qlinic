@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -29,7 +31,8 @@ import com.example.qlinic.R
 @Composable
 fun TopBarNav(
     title: String,
-    onNotificationClick: () -> Unit
+    onNotificationClick: () -> Unit,
+    onBackClick: (() -> Unit)? = null
 ) {
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -37,24 +40,33 @@ fun TopBarNav(
         TopAppBar(
             title = { },
             navigationIcon = {
-                Box(
-                    modifier = Modifier
-                        .padding(start = 16.dp)
-                        .size(50.dp)
-                        .clip(CircleShape), 
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_logosmall),
-                        contentDescription = "Qlinic Logo",
-                        modifier = Modifier.size(50.dp)
-                    )
+                if (onBackClick != null) {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 16.dp)
+                            .size(50.dp)
+                            .clip(CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_logosmall),
+                            contentDescription = "Qlinic Logo",
+                            modifier = Modifier.size(50.dp)
+                        )
+                    }
                 }
             },
             actions = {
                 IconButton(
                     onClick = onNotificationClick,
-                    modifier = Modifier.padding(end = 8.dp) // Apply padding to IconButton container, not Icon
+                    modifier = Modifier.padding(end = 8.dp)
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.notification),

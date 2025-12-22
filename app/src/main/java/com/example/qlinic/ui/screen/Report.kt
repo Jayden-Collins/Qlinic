@@ -26,6 +26,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -49,7 +50,7 @@ import com.example.qlinic.data.model.AppointmentStatistics
 import com.example.qlinic.data.model.ChartData
 import com.example.qlinic.data.model.PeakHoursReportData
 import com.example.qlinic.data.model.ReportFilterState
-import com.example.qlinic.ui.component.CustomDatePicker
+import com.example.qlinic.ui.component.CustomDatePickerDialog
 import com.example.qlinic.ui.component.DateInput
 import com.example.qlinic.ui.component.FilterDropdown
 import com.example.qlinic.ui.component.StatItem
@@ -68,6 +69,7 @@ fun ReportScreen(
     val filterState by viewModel.filterState.collectAsState()
     val stats by viewModel.stats.collectAsState()
     val peakHoursReportData by viewModel.peakHoursReportData.collectAsState()
+    val dateRangeError by viewModel.dateRangeError.collectAsState()
 
     ReportContent(
         paddingValues = paddingValues,
@@ -75,6 +77,7 @@ fun ReportScreen(
         filterState = filterState,
         stats = stats,
         peakHoursReportData = peakHoursReportData,
+        dateRangeError = dateRangeError,
         onFilterTypeChange = { type ->
             viewModel.updateFilter(
                 filterState.copy(
@@ -99,6 +102,7 @@ fun ReportContent(
     filterState: ReportFilterState,
     stats: AppointmentStatistics,
     peakHoursReportData: PeakHoursReportData,
+    dateRangeError: String?,
     onFilterTypeChange: (String) -> Unit,
     onDepartmentChange: (String) -> Unit,
     onDateChange: (Boolean, String) -> Unit
@@ -152,23 +156,33 @@ fun ReportContent(
                 }
 
                 AnimatedVisibility(visible = filterState.isCustomRangeVisible) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        DateInput(
-                            "Start",
-                            filterState.startDate,
-                            Modifier.weight(1f)
-                        ) { isStartDatePicker = true; showDatePicker = true }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        DateInput(
-                            "End",
-                            filterState.endDate,
-                            Modifier.weight(1f)
-                        ) { isStartDatePicker = false; showDatePicker = true }
+                    Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            DateInput(
+                                "Start",
+                                filterState.startDate,
+                                Modifier.weight(1f)
+                            ) { isStartDatePicker = true; showDatePicker = true }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            DateInput(
+                                "End",
+                                filterState.endDate,
+                                Modifier.weight(1f)
+                            ) { isStartDatePicker = false; showDatePicker = true }
+                        }
+                        if (dateRangeError != null) {
+                            Text(
+                                text = dateRangeError,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                            )
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
@@ -258,7 +272,7 @@ fun ReportContent(
 
     val dateToPass = if (isStartDatePicker) filterState.startDate else filterState.endDate
 
-    CustomDatePicker(
+    CustomDatePickerDialog(
         show = showDatePicker,
         onDismiss = { showDatePicker = false },
         onDateSelected = { date ->
@@ -269,7 +283,7 @@ fun ReportContent(
             SimpleDateFormat("d MMM yyyy", Locale.getDefault()).parse(dateToPass)
         } catch (e: Exception) {
             Date()
-        },
+        } ?: Date(),
         disablePastDates = false,
         disableFutureDates = true
     )
@@ -458,6 +472,7 @@ fun PreviewReportScreen() {
                 busiestDay = "Wednesday",
                 busiestTime = "10 AM - 11 AM"
             ),
+            dateRangeError = null,
             onFilterTypeChange = {},
             onDepartmentChange = {},
             onDateChange = { _, _ -> }

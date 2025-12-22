@@ -14,6 +14,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import com.example.qlinic.data.model.AppointmentStatistics
+import com.example.qlinic.data.model.ChartData
 import com.example.qlinic.data.model.PeakHoursReportData
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
@@ -41,6 +42,8 @@ interface AppointmentRepository {
         date: Date,
         symptoms: String
     ): Boolean
+
+    suspend fun isSlotTaken(slotId: String, date: Date): Boolean
 
     suspend fun getStatistics(
         type: String,
@@ -83,6 +86,21 @@ class FirestoreAppointmentRepository : AppointmentRepository {
         }
     }
 
+    override suspend fun isSlotTaken(slotId: String, date: Date): Boolean {
+        val (startOfDay, endOfDay) = getDayStartAndEnd(date)
+        val querySnapshot = appointmentsCollection
+            .whereEqualTo("slotId", slotId)
+            .whereGreaterThanOrEqualTo("appointmentDate", startOfDay)
+            .whereLessThanOrEqualTo("appointmentDate", endOfDay)
+            .get()
+            .await()
+        // Only consider appointments that are not Cancelled or No Show
+        return querySnapshot.documents.any { doc ->
+            val status = doc.getString("status")
+            status != "Cancelled" && status != "No Show"
+        }
+    }
+
     override suspend fun bookAppointment(
         patientId: String,
         slot: Slot,
@@ -98,7 +116,13 @@ class FirestoreAppointmentRepository : AppointmentRepository {
                 .get()
                 .await()
 
-            if (querySnapshot.isEmpty) {
+            // Only consider appointments that are not Cancelled or No Show
+            val activeAppointments = querySnapshot.documents.filter { doc ->
+                val status = doc.getString("status")
+                status != "Cancelled" && status != "No Show"
+            }
+
+            if (activeAppointments.isEmpty()) {
                 val appointmentId = appointmentsCollection.document().id
 
                 val data = hashMapOf(
@@ -334,7 +358,9 @@ class FirestoreAppointmentRepository : AppointmentRepository {
                 .whereEqualTo("Specialization", departmentName)
                 .get()
                 .await()
-            snapshot.documents.mapNotNull { it.getString("DoctorID") }
+            val doctorIds = snapshot.documents.mapNotNull { it.getString("DoctorID") }
+            Log.d("FirestoreQuery", "Department: '$departmentName', Found DoctorIDs: $doctorIds")
+            doctorIds
         } catch (e: Exception) {
             Log.e("FirestoreQuery", "Error getting doctors for department: $departmentName", e)
             emptyList()
@@ -428,21 +454,12 @@ class FirestoreAppointmentRepository : AppointmentRepository {
                 emptyList()
             }
 
-            val busiestCategoryLabel = when (type) {
-                "Monthly" -> "Busiest Week"
-                "Yearly" -> "Busiest Month"
-                else -> "Busiest Day"
-            }
+            val chartData: List<com.example.qlinic.data.model.ChartData>
+            var busiestTime = "No Data"
 
             val baseQuery = db.collection("Appointment")
-                .whereGreaterThanOrEqualTo(
-                    "appointmentDate",
-                    com.google.firebase.Timestamp(startDate)
-                )
-                .whereLessThanOrEqualTo(
-                    "appointmentDate",
-                    com.google.firebase.Timestamp(endDate)
-                )
+                .whereGreaterThanOrEqualTo("appointmentDate", com.google.firebase.Timestamp(startDate))
+                .whereLessThanOrEqualTo("appointmentDate", com.google.firebase.Timestamp(endDate))
 
             val finalQuery = if (department != "All Department" && doctorIds.isNotEmpty()) {
                 baseQuery.whereIn("doctorId", doctorIds)
@@ -453,17 +470,6 @@ class FirestoreAppointmentRepository : AppointmentRepository {
             }
 
             val snapshot = finalQuery.get().await()
-            
-            if (snapshot.isEmpty) {
-                return PeakHoursReportData(
-                    chartData = emptyList(),
-                    busiestDay = "No Data",
-                    busiestTime = "No Data",
-                    busiestCategoryLabel = busiestCategoryLabel
-                )
-            }
-
-            var busiestTime = "No Data"
             val hourlyCounts = mutableMapOf<Int, Int>()
 
             for (document in snapshot.documents) {
@@ -483,11 +489,9 @@ class FirestoreAppointmentRepository : AppointmentRepository {
             val busiestHour = hourlyCounts.maxByOrNull { it.value }?.key
             if (busiestHour != null) {
                 val endHour = busiestHour + 1
-                busiestTime =
-                    String.format(Locale.US, "%02d:00 - %02d:00", busiestHour, endHour)
+                busiestTime = String.format(Locale.US, "%02d:00 - %02d:00", busiestHour, endHour)
             }
 
-            val chartData: List<com.example.qlinic.data.model.ChartData>
             when (type) {
                 "Weekly", "Custom Date Range" -> {
                     val dailyCounts = mutableMapOf<String, Int>()
@@ -548,20 +552,7 @@ class FirestoreAppointmentRepository : AppointmentRepository {
                             }
                         }
                     }
-                    val labels = listOf(
-                        "Jan",
-                        "Feb",
-                        "Mar",
-                        "Apr",
-                        "May",
-                        "Jun",
-                        "Jul",
-                        "Aug",
-                        "Sep",
-                        "Oct",
-                        "Nov",
-                        "Dec"
-                    )
+                    val labels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
                     chartData = labels.mapIndexed { index, label ->
                         com.example.qlinic.data.model.ChartData(
                             value = monthlyCounts[index].toFloat(),
@@ -575,18 +566,11 @@ class FirestoreAppointmentRepository : AppointmentRepository {
                 }
             }
 
-            val maxVal = chartData.maxOfOrNull { it.value } ?: 0f
-            val busiestDay = if (maxVal > 0) {
-                chartData.maxByOrNull { it.value }?.label ?: "No Data"
-            } else {
-                "No Data"
-            }
-            
+            val busiestDay = chartData.maxByOrNull { it.value }?.label ?: "No Data"
             return PeakHoursReportData(
-                chartData = if (maxVal > 0) chartData else emptyList(),
+                chartData = chartData,
                 busiestDay = busiestDay,
-                busiestTime = busiestTime,
-                busiestCategoryLabel = busiestCategoryLabel
+                busiestTime = busiestTime
             )
         } catch (e: Exception) {
             Log.e("FirestoreQuery", "Error getting peak hours report data", e)

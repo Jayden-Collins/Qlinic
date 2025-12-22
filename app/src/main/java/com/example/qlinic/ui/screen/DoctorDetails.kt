@@ -103,7 +103,7 @@ fun DoctorDetailsLayout(
         bottomBar = {
             if (!isLoading && doctor != null) {
                 Button(
-                    onClick = { onBookClick(doctor.id) },
+                    onClick = { onBookClick(doctor.doctorID) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 16.dp)
@@ -221,7 +221,7 @@ fun DoctorDetailsContent(doctor: Doctor, staff: ClinicStaff, padding: PaddingVal
                     shape = MaterialTheme.shapes.small
                 ) {
                     Text(
-                        text = doctor.room,
+                        text = doctor.roomID,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),

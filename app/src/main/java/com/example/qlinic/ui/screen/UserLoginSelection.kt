@@ -6,7 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,11 +41,8 @@ fun LoginScreen(
     viewModel: LoginViewModel = viewModel()
 ) {
 
-    // Auto-navigation based on saved session
     val context = LocalContext.current.applicationContext as android.app.Application
-    val loginViewModel: LoginViewModel = viewModel(
-        factory = LoginViewModelFactory(context)
-    )
+    val loginViewModel: LoginViewModel = viewModel(factory = LoginViewModelFactory(context))
 
     val uiState = loginViewModel.uiState
     var rememberMe by remember { mutableStateOf(uiState.rememberMe) }
@@ -51,11 +50,8 @@ fun LoginScreen(
     val selectedUserType =
         if (uiState.userType == LoginUserType.PATIENT) UserType.PATIENT else UserType.STAFF
 
-
-    // React to navigation flags and consume them
     LaunchedEffect(uiState.navigateToPatientHome, uiState.navigateToStaffHome, uiState.navigateToDoctorHome) {
         if (uiState.navigateToPatientHome || uiState.navigateToStaffHome || uiState.navigateToDoctorHome) {
-            // Navigate to the unified HomeScreen
             navController.navigate(Routes.Home.route) {
                 popUpTo(Routes.USER_SELECTION) { inclusive = true }
             }
@@ -63,10 +59,7 @@ fun LoginScreen(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         // Fullscreen background image
         Image(
             painter = painterResource(id = R.drawable.login_background),
@@ -82,41 +75,41 @@ fun LoginScreen(
                 .background(Color(0x66000000))
         )
 
+        // This parent Column arranges the logo and the form vertically.
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
-        ){
-            Image(
-                painter = painterResource(id = R.drawable.app_logo),
-                contentDescription = "App Logo",
-                modifier = Modifier.size(250.dp) // Reduced size to prevent overlap
-            )
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Foreground sheet aligned to bottom
-        Box(
-            modifier = Modifier
-                .height(550.dp)
-                .fillMaxWidth()
-                .align(Alignment.BottomStart)
-                .clip(RoundedCornerShape(topStart = 80.dp))
-                .background(Color.White)
         ) {
+            // 1. Logo at the top (static, does not scroll).
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 30.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo),
+                    contentDescription = "App Logo",
+                    modifier = Modifier.size(200.dp) // Adjusted size for better balance
+                )
+            }
+
+            // 2. Form area (takes remaining space and is scrollable).
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth()
+                    .weight(1f) // Key change: Takes all available vertical space.
+                    .clip(RoundedCornerShape(topStart = 80.dp))
+                    .background(Color.White)
+                    .verticalScroll(rememberScrollState()) // Key change: Content inside will scroll if it overflows.
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Show loading indicator
                 if (uiState.isLoading) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp),
+                        modifier = Modifier.height(100.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
@@ -124,180 +117,104 @@ fun LoginScreen(
                 } else {
                     Image(
                         painter = painterResource(
-                            id = if (selectedUserType == UserType.PATIENT)
-                                R.drawable.patient_icon
-                            else
-                                R.drawable.staff_icon
+                            id = if (selectedUserType == UserType.PATIENT) R.drawable.patient_icon else R.drawable.staff_icon
                         ),
                         contentDescription = "User Type Icon",
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .size(100.dp)
+                        modifier = Modifier.size(100.dp)
                     )
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Error message
-                uiState.globalError?.let { error ->
-                    Text(
-                        text = error,
-                        color = Color.Red,
-                        fontSize = 14.sp,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                    )
+                uiState.globalError?.let {
+                    Text(text = it, color = Color.Red, fontSize = 14.sp, modifier = Modifier.padding(bottom = 8.dp))
                 }
 
-                // User type selection
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 0.dp)
-                ) {
-                    // Patient Button
+                Row(modifier = Modifier.fillMaxWidth()) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(topStart = 30.dp, bottomStart = 30.dp))
                             .border(
-                                width = 1.dp,
-                                color = colorResource(R.color.teal_200),
-                                shape = RoundedCornerShape(topStart = 30.dp, bottomStart = 30.dp)
+                                1.dp,
+                                colorResource(R.color.teal_200),
+                                RoundedCornerShape(topStart = 30.dp, bottomStart = 30.dp)
                             )
-                            .background(
-                                if (selectedUserType == UserType.PATIENT)
-                                    colorResource(R.color.teal_200)
-                                else
-                                    Color.White
-                            )
-                            .padding(vertical = 12.dp)
-                            .clickable {
-                                loginViewModel.onUserTypeChange(LoginUserType.PATIENT)
-                            },
+                            .background(if (selectedUserType == UserType.PATIENT) colorResource(R.color.teal_200) else Color.White)
+                            .clickable { loginViewModel.onUserTypeChange(LoginUserType.PATIENT) }
+                            .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = stringResource(R.string.patient),
-                            color = if (selectedUserType == UserType.PATIENT)
-                                Color.White
-                            else
-                                colorResource(R.color.teal_200),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium
+                            stringResource(R.string.patient),
+                            color = if (selectedUserType == UserType.PATIENT) Color.White else colorResource(R.color.teal_200),
+                            fontSize = 16.sp, fontWeight = FontWeight.Medium
                         )
                     }
-
-                    // Staff Button
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(topEnd = 30.dp, bottomEnd = 30.dp))
-                            .border(
-                                width = 1.dp,
-                                color = colorResource(R.color.teal_200),
-                                shape = RoundedCornerShape(topEnd = 30.dp, bottomEnd = 30.dp)
-                            )
-                            .background(
-                                if (selectedUserType == UserType.STAFF)
-                                    colorResource(R.color.teal_200)
-                                else
-                                    Color.White
-                            )
-                            .padding(vertical = 12.dp)
-                            .clickable {
-                                loginViewModel.onUserTypeChange(LoginUserType.CLINIC_STAFF)
-                            },
+                            .border(1.dp, colorResource(R.color.teal_200), RoundedCornerShape(topEnd = 30.dp, bottomEnd = 30.dp))
+                            .background(if (selectedUserType == UserType.STAFF) colorResource(R.color.teal_200) else Color.White)
+                            .clickable { loginViewModel.onUserTypeChange(LoginUserType.CLINIC_STAFF) }
+                            .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Clinic Staff",
-                            color = if (selectedUserType == UserType.STAFF)
-                                Color.White
-                            else
-                                colorResource(R.color.teal_200),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium
+                            "Clinic Staff",
+                            color = if (selectedUserType == UserType.STAFF) Color.White else colorResource(R.color.teal_200),
+                            fontSize = 16.sp, fontWeight = FontWeight.Medium
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Dynamic input fields based on user type
                 when (selectedUserType) {
-                    UserType.PATIENT -> {
-                        PatientLoginFields(
-                            email = uiState.identifier,
-                            onEmailChange = { loginViewModel.onIdentifierChange(it) },
-                            password = uiState.password,
-                            onPasswordChange = { loginViewModel.onPasswordChange(it) },
-                            passwordVisible = uiState.passwordVisible,
-                            onPasswordVisibilityChange = { loginViewModel.onPasswordVisibilityChange(it) },
-                            identifierError = uiState.identifierError,
-                            passwordError = uiState.passwordError
-                        )
-                    }
-                    UserType.STAFF -> {
-                        StaffLoginFields(
-                            staffId = uiState.identifier,
-                            onStaffIdChange = { loginViewModel.onIdentifierChange(it) },
-                            password = uiState.password,
-                            onPasswordChange = { loginViewModel.onPasswordChange(it) },
-                            passwordVisible = uiState.passwordVisible,
-                            onPasswordVisibilityChange = { loginViewModel.onPasswordVisibilityChange(it) },
-                            identifierError = uiState.identifierError,
-                            passwordError = uiState.passwordError
-                        )
-                    }
+                    UserType.PATIENT -> PatientLoginFields(
+                        email = uiState.identifier, onEmailChange = { loginViewModel.onIdentifierChange(it) },
+                        password = uiState.password, onPasswordChange = { loginViewModel.onPasswordChange(it) },
+                        passwordVisible = uiState.passwordVisible, onPasswordVisibilityChange = { loginViewModel.onPasswordVisibilityChange(it) },
+                        identifierError = uiState.identifierError, passwordError = uiState.passwordError
+                    )
+                    UserType.STAFF -> StaffLoginFields(
+                        staffId = uiState.identifier, onStaffIdChange = { loginViewModel.onIdentifierChange(it) },
+                        password = uiState.password, onPasswordChange = { loginViewModel.onPasswordChange(it) },
+                        passwordVisible = uiState.passwordVisible, onPasswordVisibilityChange = { loginViewModel.onPasswordVisibilityChange(it) },
+                        identifierError = uiState.identifierError, passwordError = uiState.passwordError
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
-                            checked = rememberMe,
-                            onCheckedChange = { rememberMe = it },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = colorResource(R.color.teal_200)
-                            )
+                            checked = rememberMe, onCheckedChange = { rememberMe = it },
+                            colors = CheckboxDefaults.colors(checkedColor = colorResource(R.color.teal_200))
                         )
                         Text(
-                            text = "Remember Me",
-                            color = colorResource(R.color.teal_200),
-                            fontSize = 14.sp,
+                            "Remember Me",
+                            color = colorResource(R.color.teal_200), fontSize = 14.sp,
                             modifier = Modifier.clickable { rememberMe = !rememberMe }
                         )
                     }
-
                     Text(
-                        text = "Forgot Password?",
-                        color = colorResource(R.color.teal_200),
-                        fontSize = 14.sp,
+                        "Forgot Password?",
+                        color = colorResource(R.color.teal_200), fontSize = 14.sp,
                         modifier = Modifier.clickable { navController.navigate(Routes.FORGET_PASSWORD) }
                     )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Login Button
                 Button(
-                    onClick = {
-                        loginViewModel.login(
-                            rememberMe = rememberMe,
-                            onSuccessNavigate = { /* handled by LaunchedEffect */ },
-                            onFailure = { /* UI handled */ }
-                        )
-                    },
+                    onClick = { loginViewModel.login(rememberMe = rememberMe, onSuccessNavigate = {}, onFailure = {}) },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.black)),
@@ -306,36 +223,24 @@ fun LoginScreen(
                     if (uiState.isLoading) {
                         CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
                     } else {
-                        Text(text = "Log In", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                        Text("Log In", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                     }
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Sign up link (only for patients)
                 if (selectedUserType == UserType.PATIENT) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
+                    Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+                        Text("Don't have an account? ", color = Color.Gray, fontSize = 14.sp)
                         Text(
-                            text = "Don't have an account? ",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            text = "Sign Up",
-                            color = colorResource(R.color.teal_200),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.clickable {
-                                navController.navigate(Routes.SIGNUP)
-                            }
+                            "Sign Up",
+                            color = colorResource(R.color.teal_200), fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                            modifier = Modifier.clickable { navController.navigate(Routes.SIGNUP) }
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(20.dp)) // Spacer at the bottom for padding
             }
         }
     }

@@ -20,6 +20,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.qlinic.R
@@ -37,11 +38,15 @@ import java.util.Locale
 fun HomeScreen(
     paddingValues: PaddingValues,
     homeViewModel: HomeViewModel,
-    onNavigateToSchedule: () -> Unit
+    onNavigateToSchedule: () -> Unit,
+    navController: NavController
 ) {
     val homeUiState by homeViewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // State for showing cancel confirmation dialog
+    var cancelDialogAppointmentId by remember { mutableStateOf<String?>(null) }
 
     Box(
         modifier = Modifier
@@ -51,24 +56,50 @@ fun HomeScreen(
         HomeScreenContent(
             state = homeUiState,homeViewModel = homeViewModel,
             onTabSelected = { newStatus -> homeViewModel.onTabSelected(newStatus) },
-            onAction = { appointmentId, action ->
-                homeViewModel.onAppointmentAction(appointmentId, action)
-                if (action == "Complete" || action == "NoShow") {
-                    scope.launch {
-                        val message = if (action == "Complete") "Appointment Completed" else "Marked as No Show"
-                        val result = snackbarHostState.showSnackbar(
-                            message = message,
-                            actionLabel = "Undo",
-                            duration = SnackbarDuration.Short // Shows for ~4 seconds
-                        )
-                        if (result == SnackbarResult.ActionPerformed) {
-                            homeViewModel.onAppointmentAction(appointmentId, "Undo")
+            onAction = { appointmentId, action, doctorId ->
+                if (action == "ReBook") {
+                    navController.navigate("book_appointment/$doctorId")
+                } else if (action == "Reschedule") {
+                    navController.navigate("reschedule_appointment/$appointmentId/$doctorId")
+                } else if (action == "Cancel" && homeUiState.userRole == UserRole.PATIENT) {
+                    cancelDialogAppointmentId = appointmentId
+                } else {
+                    homeViewModel.onAppointmentAction(appointmentId, action)
+                    if (action == "Complete" || action == "NoShow") {
+                        scope.launch {
+                            val message = if (action == "Complete") "Appointment Completed" else "Marked as No Show"
+                            val result = snackbarHostState.showSnackbar(
+                                message = message,
+                                actionLabel = "Undo",
+                                duration = SnackbarDuration.Short
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                homeViewModel.onAppointmentAction(appointmentId, "Undo")
+                            }
                         }
                     }
                 }
             },
             onNavigateToSchedule = onNavigateToSchedule
         )
+
+        // Cancel confirmation dialog
+        if (cancelDialogAppointmentId != null) {
+            AlertDialog(
+                onDismissRequest = { cancelDialogAppointmentId = null },
+                title = { Text("Cancel Appointment?") },
+                text = { Text("Are you sure you want to cancel this appointment?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        homeViewModel.onAppointmentAction(cancelDialogAppointmentId!!, "Cancel")
+                        cancelDialogAppointmentId = null
+                    }) { Text("Yes, Cancel") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { cancelDialogAppointmentId = null }) { Text("No") }
+                }
+            )
+        }
 
         SnackbarHost(
             hostState = snackbarHostState,
@@ -84,7 +115,7 @@ fun HomeScreenContent(
     state: HomeUiState,
     homeViewModel: HomeViewModel,
     onTabSelected: (AppointmentStatus) -> Unit,
-    onAction: (String, String) -> Unit,
+    onAction: (String, String, String) -> Unit,
     onNavigateToSchedule: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -171,7 +202,7 @@ fun HomeScreenContent(
                                 TimelineAppointmentRow(
                                     uiItem = uiItem,
                                     currentUserRole = state.userRole,
-                                    onActionClick = onAction
+                                    onActionClick = { appointmentId, action -> onAction(appointmentId, action, uiItem.rawAppointment.doctor?.staffId ?: "") }
                                 )
                             }
                         }
@@ -195,7 +226,7 @@ fun HomeScreenContent(
                             AppointmentCard(
                                 uiItem = uiItem,
                                 currentUserRole = state.userRole,
-                                onActionClick = onAction
+                                onActionClick = { appointmentId, action -> onAction(appointmentId, action, uiItem.rawAppointment.doctor?.staffId ?: "") }
                             )
                         }
                     }
@@ -282,21 +313,47 @@ fun AppointmentCard(
 
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_room),
-                            contentDescription = "Room",
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Log.d("ROOM", uiItem.rawAppointment.roomId ?: "TBD")
-                        Text(
-                            text = uiItem.rawAppointment.roomId ?: "TBD",
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                        if (currentUserRole == UserRole.PATIENT) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_room),
+                                contentDescription = "Room",
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = uiItem.rawAppointment.roomId ?: "TBD",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Medium
+                            )
+                        } else if (currentUserRole == UserRole.STAFF) {
+                            Text(
+                                text = uiItem.doctorFullName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
             }
+
+            // PATIENT (Complete)
+            if (currentUserRole == UserRole.PATIENT && uiItem.rawAppointment.status == AppointmentStatus.COMPLETED) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { onActionClick(uiItem.id, "ReBook") },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.outline, // Light Grey
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant // Dark Text
+                    ),
+                    modifier = Modifier.fillMaxWidth() // Full Width
+                ) {
+                    Text("Re-Book",style = MaterialTheme.typography.labelMedium)
+                }
+            }
+
             // PATIENT & STAFF BUTTONS (Cancel / Reschedule)
             if ((currentUserRole == UserRole.PATIENT || currentUserRole == UserRole.STAFF) && uiItem.rawAppointment.status == AppointmentStatus.UPCOMING) {
                 Spacer(modifier = Modifier.height(16.dp))

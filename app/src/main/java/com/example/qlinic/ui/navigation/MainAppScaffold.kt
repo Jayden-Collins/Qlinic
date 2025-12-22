@@ -15,6 +15,7 @@ import com.example.qlinic.data.model.SessionManager
 fun MainAppScaffold(
     navController: NavController,
     screenTitle: String = "",
+    onBackClick: (() -> Unit)? = null,
     content: @Composable (PaddingValues) -> Unit
 ) {
     val context = LocalContext.current
@@ -25,8 +26,17 @@ fun MainAppScaffold(
 
     val onNavigateHome: () -> Unit =
         { navController.navigate(Routes.Home.route) { launchSingleTop = true } }
-    val onNavigateToSchedule: () -> Unit =
-        { navController.navigate(Routes.Schedule.route) { launchSingleTop = true } }
+    
+    val onNavigateToSchedule: () -> Unit = {
+        val userType = sessionManager.getSavedUserType()
+        val route = if (userType == "CLINIC_STAFF") {
+            Routes.DoctorCalendar.route
+        } else {
+            Routes.Schedule.route
+        }
+        navController.navigate(route) { launchSingleTop = true }
+    }
+    
     val onNavigateToReport: () -> Unit =
         { navController.navigate(Routes.Report.route) { launchSingleTop = true } }
 
@@ -52,6 +62,7 @@ fun MainAppScaffold(
         when {
             currentRoute == Routes.Home.route -> "Upcoming Appointments"
             currentRoute == Routes.Schedule.route -> "Doctor Schedules"
+            currentRoute == Routes.DoctorCalendar.route -> "Doctor Schedule"
             currentRoute == Routes.Report.route -> "Reports"
             currentRoute?.startsWith("profile") == true -> "Profile"
             else -> ""
@@ -63,7 +74,8 @@ fun MainAppScaffold(
         topBar = {
             TopBarNav(
                 title = finalTitle,
-                onNotificationClick = { navController.navigate(Routes.Notifications.route) }
+                onNotificationClick = { navController.navigate(Routes.Notifications.route) },
+                onBackClick = onBackClick
             )
         },
         bottomBar = {

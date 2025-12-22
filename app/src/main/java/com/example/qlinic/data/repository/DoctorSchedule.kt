@@ -35,12 +35,12 @@ class DoctorSchedule {
                         imageUrl = staffDoc.getString("ImageUrl") ?: "",
                         lastName = staffDoc.getString("LastName") ?: "",
                         phoneNumber = staffDoc.getString("PhoneNumber") ?: "",
-                        staffID = staffDoc.getString("StaffID") ?: staffDoc.id,
+                        staffId = staffDoc.getString("StaffID") ?: staffDoc.id,
                         role = staffDoc.getString("Role") ?: "",
                         isActive = staffDoc.getBoolean("isActive") ?: true
                     )
                     // find matching doctor info
-                    val staffID = clinicStaff.staffID
+                    val staffID = clinicStaff.staffId
                     val doctorInfo = findDoctorInfo(staffID)
 
                     if (doctorInfo != null){

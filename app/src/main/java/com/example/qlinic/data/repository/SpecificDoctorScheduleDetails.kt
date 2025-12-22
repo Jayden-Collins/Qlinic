@@ -2,6 +2,7 @@ package com.example.qlinic.data.repository
 
 import android.util.Log
 import com.example.qlinic.data.model.Appointment
+import com.example.qlinic.data.model.AppointmentStatus
 import com.example.qlinic.data.model.AvailabilityException
 import com.example.qlinic.data.model.ClinicStaff
 import com.example.qlinic.data.model.Doctor
@@ -37,7 +38,7 @@ class SpecificDoctorScheduleDetails {
 
             if (staffDoc.exists()){
                 val clinicStaff = ClinicStaff(
-                    staffID = staffDoc.getString("StaffID") ?: staffDoc.id,
+                    staffId = staffDoc.getString("StaffID") ?: staffDoc.id,
                     email = staffDoc.getString("Email") ?: "",
                     firstName = staffDoc.getString("FirstName") ?: "",
                     lastName = staffDoc.getString("LastName") ?: "",
@@ -106,16 +107,16 @@ class SpecificDoctorScheduleDetails {
                 // If caller provided start/end date limits, apply server-side range filter to reduce documents
                 if (startDate != null && endDate != null) {
                     query = query
-                        .whereGreaterThanOrEqualTo("appointmentDate", com.google.firebase.Timestamp(startDate))
-                        .whereLessThanOrEqualTo("appointmentDate", com.google.firebase.Timestamp(endDate))
+                        .whereGreaterThanOrEqualTo("appointmentDate", Timestamp(startDate))
+                        .whereLessThanOrEqualTo("appointmentDate", Timestamp(endDate))
                 }
 
                 val snap = query.get().await()
                 for (doc in snap.documents) {
                     try {
-                        val appointmentId = doc.getString("appointmentId") ?: doc.getString("appointmentId") ?: doc.id
-                        val ts = doc.getTimestamp("appointmentDate") ?: doc.getTimestamp("appointmentDate")
-                        val status = doc.getString("status") ?: doc.getString("status") ?: ""
+                        val appointmentId = doc.getString("appointmentId") ?: doc.id
+                        val ts = doc.getTimestamp("appointmentDate")
+                        val statusStr = doc.getString("status") ?: ""
 
                         if (ts == null) continue
 
@@ -125,14 +126,23 @@ class SpecificDoctorScheduleDetails {
                             if (d.before(startDate) || d.after(endDate)) continue
                         }
 
-                        if (!status.equals("Booked", ignoreCase = true)) continue
+                        if (!statusStr.equals("Upcoming", ignoreCase = true) && !statusStr.equals("Booked", ignoreCase = true)) continue
+
+                        val status = when (statusStr.lowercase()) {
+                            "upcoming", "booked" -> AppointmentStatus.UPCOMING
+                            "completed" -> AppointmentStatus.COMPLETED
+                            "cancelled" -> AppointmentStatus.CANCELLED
+                            "on going" -> AppointmentStatus.ONGOING
+                            "no show" -> AppointmentStatus.NO_SHOW
+                            else -> AppointmentStatus.UPCOMING
+                        }
 
                         val appointment = Appointment(
-                            appointmentID = appointmentId,
-                            appointmentDateTime = ts,
-                            isReminderSent = doc.getBoolean("isNotifSent") ?: doc.getBoolean("isReminderSent") ?: false,
-                            patientID = doc.getString("patientId") ?: doc.getString("patientID") ?: "",
-                            slotID = doc.getString("slotId") ?: doc.getString("slotID") ?: "",
+                            appointmentId = appointmentId,
+                            appointmentDate = ts.toDate(),
+                            isNotifSent = doc.getBoolean("isNotifSent") ?: doc.getBoolean("isReminderSent") ?: false,
+                            patientId = doc.getString("patientId") ?: doc.getString("patientID") ?: "",
+                            slotId = doc.getString("slotId") ?: doc.getString("slotID") ?: "",
                             status = status,
                             symptoms = doc.getString("symptoms") ?: doc.getString("Symptoms") ?: ""
                         )
@@ -159,17 +169,19 @@ class SpecificDoctorScheduleDetails {
                 .get()
                 .await()
 
-            val nowTs = Timestamp.now()
+            val now = Date()
 
             snapshot.documents.mapNotNull { doc ->
                 try {
-                    val endTs = doc.getTimestamp("endDateTime") ?: Timestamp(0,0)
+                    val endTs = doc.getTimestamp("endDateTime")
+                    val endDate = endTs?.toDate() ?: Date(0)
+                    
                     // filter out already expired exceptions on the client side
-                    if (endTs.seconds >= nowTs.seconds) {
+                    if (endDate.after(now)) {
                         AvailabilityException(
                             exceptionID = doc.getString("exceptionID") ?: doc.id,
-                            startDateTime = doc.getTimestamp("startDateTime") ?: Timestamp.now(),
-                            endDateTime = endTs,
+                            startDateTime = doc.getTimestamp("startDateTime")?.toDate() ?: Date(),
+                            endDateTime = endDate,
                             reason = doc.getString("reason") ?: "",
                             doctorID = doc.getString("doctorID") ?: "",
                             staffID = doc.getString("staffID") ?: "",
@@ -261,13 +273,13 @@ class SpecificDoctorScheduleDetails {
     ): List<Date> {
         val dates = mutableListOf<Date>()
 
-        val exceptionStartDate = exception.startDateTime.toDate()
-        val exceptionEndDate = exception.endDateTime.toDate()
+        val exceptionStartDate = exception.startDateTime
+        val exceptionEndDate = exception.endDateTime
 
         // Check if exception overlaps with range
         if (exceptionStartDate <= rangeEnd && exceptionEndDate >= rangeStart) {
-            val overlapStart = maxOf(exceptionStartDate, rangeStart)
-            val overlapEnd = minOf(exceptionEndDate, rangeEnd)
+            val overlapStart = if (exceptionStartDate > rangeStart) exceptionStartDate else rangeStart
+            val overlapEnd = if (exceptionEndDate < rangeEnd) exceptionEndDate else rangeEnd
 
             val calendar = Calendar.getInstance()
             calendar.time = overlapStart
@@ -295,12 +307,10 @@ class SpecificDoctorScheduleDetails {
     // Helper: get end of day (23:59:59.999) for a given date
     private fun endOfDay(date: Date): Date {
         val cal = Calendar.getInstance().apply { time = date }
-        cal.set(Calendar.HOUR_OF_DAY, 0)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        cal.add(Calendar.DAY_OF_MONTH, 1)
-        cal.add(Calendar.MILLISECOND, -1)
+        cal.set(Calendar.HOUR_OF_DAY, 23)
+        cal.set(Calendar.MINUTE, 59)
+        cal.set(Calendar.SECOND, 59)
+        cal.set(Calendar.MILLISECOND, 999)
         return cal.time
     }
 
@@ -315,10 +325,8 @@ class SpecificDoctorScheduleDetails {
             val collectionRef = firestore.collection("AvailabilityException")
 
             dates.forEach { date ->
-                val startOfDay = startOfDay(date)
-                Log.d("SpecificDoctorSchedule", "Start of day: $startOfDay")
-                val endOfDay = endOfDay(date)
-                Log.d("SpecificDoctorSchedule", "End of day: $endOfDay")
+                val sDay = startOfDay(date)
+                val eDay = endOfDay(date)
 
                 // Get a new document reference to obtain Firestore auto-generated ID
                 val newDocRef = collectionRef.document()
@@ -328,8 +336,8 @@ class SpecificDoctorScheduleDetails {
                     "exceptionID" to generatedId,
                     "doctorID" to doctorID,
                     "staffID" to staffID,
-                    "startDateTime" to Timestamp(startOfDay),
-                    "endDateTime" to Timestamp(endOfDay),
+                    "startDateTime" to Timestamp(sDay),
+                    "endDateTime" to Timestamp(eDay),
                     "reason" to reason,
                 )
 
@@ -355,8 +363,8 @@ class SpecificDoctorScheduleDetails {
             dates.forEach { date ->
                 // Find exceptions that cover this date (compare using whole-day boundaries)
                 val exceptionsForDate = exceptions.filter { exception ->
-                    val exceptionStart = exception.startDateTime.toDate()
-                    val exceptionEnd = exception.endDateTime.toDate()
+                    val exceptionStart = exception.startDateTime
+                    val exceptionEnd = exception.endDateTime
                     // if the date's whole-day range intersects the exception range
                     val dStart = startOfDay(date)
                     val dEnd = endOfDay(date)
@@ -479,68 +487,6 @@ class SpecificDoctorScheduleDetails {
         } catch (e: Exception) {
             println("Error fetching slot times: ${e.message}")
             emptyMap()
-        }
-    }
-
-    // New: one-time migration to normalize existing AvailabilityException documents
-    // Recomputes startDateTime/endDateTime to full-day boundaries in Asia/Singapore and updates documents.
-    // Use sparingly and optionally provide doctorId/from/to to limit scope.
-    suspend fun migrateNormalizeAvailabilityExceptions(
-        doctorId: String? = null,
-        fromDate: Date? = null,
-        toDate: Date? = null
-    ): Int {
-        return try {
-            val coll = firestore.collection("AvailabilityException")
-
-            // Build base query
-            var query = coll.limit(1000)
-            if (doctorId != null) query = query.whereEqualTo("doctorID", doctorId)
-
-            val snap = query.get().await()
-            var updated = 0
-
-            val zone = ZoneId.of("Asia/Singapore")
-
-            for (doc in snap.documents) {
-                try {
-                    val startTs = doc.getTimestamp("startDateTime")
-                    val endTs = doc.getTimestamp("endDateTime")
-                    if (startTs == null || endTs == null) continue
-
-                    // Compute local dates
-                    val startLocal = startTs.toDate().toInstant().atZone(zone).toLocalDate()
-                    val endLocal = endTs.toDate().toInstant().atZone(zone).toLocalDate()
-
-                    // Optionally filter by provided from/to (compare as LocalDate)
-                    if (fromDate != null) {
-                        val f = fromDate.toInstant().atZone(zone).toLocalDate()
-                        if (endLocal.isBefore(f)) continue
-                    }
-                    if (toDate != null) {
-                        val t = toDate.toInstant().atZone(zone).toLocalDate()
-                        if (startLocal.isAfter(t)) continue
-                    }
-
-                    val newStart = Date.from(startLocal.atStartOfDay(zone).toInstant())
-                    val newEnd = Date.from(endLocal.plusDays(1).atStartOfDay(zone).minusNanos(1).toInstant())
-
-                    val updates = mapOf(
-                        "startDateTime" to Timestamp(newStart),
-                        "endDateTime" to Timestamp(newEnd)
-                    )
-
-                    coll.document(doc.id).update(updates).await()
-                    updated++
-                } catch (t: Throwable) {
-                    // ignore single doc failures
-                }
-            }
-
-            updated
-        } catch (e: Exception) {
-            println("Migration failed: ${e.message}")
-            0
         }
     }
 }

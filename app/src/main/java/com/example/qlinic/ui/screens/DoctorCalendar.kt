@@ -1,38 +1,12 @@
 package com.example.qlinic.ui.screens
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,15 +21,15 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.qlinic.R
 import com.example.qlinic.data.model.SpecificDoctorInfo
+import com.example.qlinic.ui.component.SimpleTopBar
 import com.example.qlinic.ui.navigation.Routes
-import com.example.qlinic.ui.navigation.TopBar
-import com.example.qlinic.ui.viewModels.DoctorScheduleViewModel
-import com.example.qlinic.ui.navigation.BottomNavBar
+import com.example.qlinic.ui.viewmodel.DoctorScheduleViewModel
 
 @Composable
 fun DoctorCalendar(
     navController: NavController,
-    viewModel: DoctorScheduleViewModel
+    viewModel: DoctorScheduleViewModel,
+    modifier: Modifier = Modifier,
 ) {
     val doctors by viewModel.doctors.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -63,27 +37,16 @@ fun DoctorCalendar(
 
     Scaffold(
         topBar = {
-            Column {
-                TopBar(navController)
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = "Doctor Schedule",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        },
-        bottomBar = { BottomNavBar(navController) }
+            SimpleTopBar(
+                title = "Doctor Schedule",
+                onUpClick = { navController.navigateUp() }
+            )
+        }
     ) { paddingValues ->
         Box(
-            modifier = Modifier
-                .padding(paddingValues)
+            modifier = modifier
                 .fillMaxSize()
+                .padding(paddingValues)
         ) {
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -117,10 +80,13 @@ fun DoctorList(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
+            // Added padding above search bar as requested
+            Spacer(modifier = Modifier.height(8.dp))
+            
             OutlinedTextField(
                 value = searched,
                 onValueChange = onSearchTextChange,
@@ -132,14 +98,7 @@ fun DoctorList(
                 }
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Selected Doctor",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(8.dp)
-            )
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         items(filtered, key = { it.id }) { doctor ->
@@ -158,27 +117,24 @@ fun DoctorCard(
             .fillMaxWidth()
             .clickable(onClick = onViewClick),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(120.dp)
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(96.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(12.dp))
             ) {
                 AsyncImage(
                     model = doctor.imageUrl,
                     contentDescription = "Doctor image",
-                    modifier = Modifier
-                        .size(84.dp)
-                        .clip(RoundedCornerShape(12.dp)),
+                    modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
             }
@@ -186,46 +142,37 @@ fun DoctorCard(
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                // show the doctor's full name and allow wrapping to up to 2 lines
                 Text(
                     text = "Dr. ${doctor.fullName}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = doctor.specialization,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 HorizontalDivider(color = Color(0xFFEEEEEE), thickness = 1.dp)
 
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // allow specialization to wrap up to 2 lines and show ellipsis if still too long
-                Text(
-                    text = doctor.specialization,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-                    color = Color(0xFF607D8B),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
-            Column(
-                modifier = Modifier
-                    .height(120.dp)
-                    .padding(start = 8.dp),
-                verticalArrangement = Arrangement.Bottom,
-                horizontalAlignment = Alignment.CenterHorizontally
+            Button(
+                onClick = onViewClick,
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2EA2B4)),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                modifier = Modifier.height(32.dp)
             ) {
-                Button(
-                    onClick = onViewClick,
-                    shape = RoundedCornerShape(20.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2EA2B4)),
-                    modifier = Modifier.height(36.dp)
-                ) {
-                    Text(text = "View", color = Color.White)
-                }
+                Text(text = "View", color = Color.White, fontSize = 12.sp)
             }
         }
     }

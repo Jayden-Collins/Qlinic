@@ -361,17 +361,6 @@ fun EditProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (role.lowercase() == "staff" || role.lowercase() == "doctor") {
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "Active", modifier = Modifier.weight(1f))
-                    Switch(checked = isActive, onCheckedChange = { isActive = it })
-                }
-            }
-
             if (!error.isNullOrBlank()) {
                 Text(text = error ?: "", color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(8.dp))

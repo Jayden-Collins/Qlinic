@@ -45,6 +45,16 @@ fun PatientSignUpScreen(
     val state = vm.uiState
     val context = LocalContext.current
 
+    fun validateFields(): Boolean {
+        if (state.firstName.isBlank() || state.lastName.isBlank() || state.nric.isBlank() ||
+            state.email.isBlank() || state.password.isBlank() || state.confirmPassword.isBlank() ||
+            state.gender.isBlank() || state.phone.isBlank()
+        ) {
+            Toast.makeText(context, "All fields must be filled", Toast.LENGTH_SHORT).show()
+            return false
+        }
+        return true
+    }
 
     // Removed outer verticalScroll to avoid nested scrollables/infinite constraints
     Column(
@@ -217,15 +227,17 @@ fun PatientSignUpScreen(
 
                 Button(
                     onClick = {
-                        vm.signup(
-                            onSuccessNavigate = {
-                                Toast.makeText(context, "Signup successful", Toast.LENGTH_SHORT).show()
-                                onLoginClick()
-                            },
-                            onFailure = { msg ->
-                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                            }
-                        )
+                        if (validateFields()) {
+                            vm.signup(
+                                onSuccessNavigate = {
+                                    Toast.makeText(context, "Signup successful", Toast.LENGTH_SHORT).show()
+                                    onLoginClick()
+                                },
+                                onFailure = { msg ->
+                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()

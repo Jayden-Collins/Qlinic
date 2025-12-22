@@ -100,17 +100,32 @@ class HomeViewModel(
                 Triple("${pat?.firstName} ${pat?.lastName}", pat?.gender ?: "", pat?.imageUrl)
             }
 
+            val doctorFullName = appt.doctor?.let { "Dr. ${it.firstName} ${it.lastName}" } ?: "Doctor info unavailable"
+
             val isStarted = isAppointmentStarted(appt.dateTime)
-            val realStatus = if (appt.status == AppointmentStatus.UPCOMING && isStarted) {
+            val isEnded = isAppointmentEnded(appt.dateTime)
+            val realStatus = if (role == UserRole.DOCTOR && appt.status == AppointmentStatus.UPCOMING && isStarted) {
+                AppointmentStatus.ONGOING
+            } else if (appt.status == AppointmentStatus.UPCOMING && isStarted && !isEnded) {
                 AppointmentStatus.ONGOING
             } else {
                 appt.status
             }
 
-            val buttonsEnabled = if (role == UserRole.PATIENT || role == UserRole.STAFF) {
-                !isStarted
+            // Parse appointment start and end times
+            val formatter = DateTimeFormatter.ofPattern(pattern, Locale.getDefault())
+            val apptStart = try { LocalDateTime.parse(appt.dateTime, formatter) } catch (e: Exception) { LocalDateTime.now().minusYears(1) }
+            val apptEnd = apptStart.plusMinutes(30) // Default to 30 minutes duration
+            val nowTime = LocalDateTime.now()
+            val isOngoing = nowTime.isAfter(apptStart) && nowTime.isBefore(apptEnd)
+            val isFuture = nowTime.isBefore(apptStart)
+
+            val buttonsEnabled = if (role == UserRole.DOCTOR) {
+                isOngoing // Only enable if appointment is currently ongoing
+            } else if (role == UserRole.PATIENT || role == UserRole.STAFF) {
+                !isOngoing && isFuture // Only enable for future appointments
             } else {
-                isStarted
+                false
             }
             val timeStr = parseTime(appt.dateTime)
 
@@ -122,7 +137,8 @@ class HomeViewModel(
                 displayImageUrl = img,
                 displayStatus = realStatus,
                 timeString = timeStr,
-                isActionEnabled = buttonsEnabled
+                isActionEnabled = buttonsEnabled,
+                doctorFullName = doctorFullName // Pass doctor's full name
             )
         }
     }
@@ -136,7 +152,7 @@ class HomeViewModel(
         viewModelScope.launch {
             when (action) {
                 "Complete" -> repository.updateAppointmentStatus(appointmentId, "Completed")
-                "NoShow" -> repository.updateAppointmentStatus(appointmentId, "Cancelled")
+                "NoShow" -> repository.updateAppointmentStatus(appointmentId, "No Show")
                 "Undo" -> repository.updateAppointmentStatus(appointmentId, "Upcoming")
                 "Cancel" -> repository.updateAppointmentStatus(appointmentId, "Cancelled")
             }
@@ -151,6 +167,17 @@ class HomeViewModel(
             LocalDateTime.now().isAfter(apptTime)
         } catch (e: Exception) {
             true
+        }
+    }
+
+    private fun isAppointmentEnded(dateString: String): Boolean {
+        return try {
+            val formatter = DateTimeFormatter.ofPattern(pattern, Locale.getDefault())
+            val apptTime = LocalDateTime.parse(dateString, formatter)
+            val endTime = apptTime.plusMinutes(30) // Assuming 30 minute duration
+            LocalDateTime.now().isAfter(endTime)
+        } catch (e: Exception) {
+            true // If parsing fails, assume it's ended to be safe
         }
     }
 

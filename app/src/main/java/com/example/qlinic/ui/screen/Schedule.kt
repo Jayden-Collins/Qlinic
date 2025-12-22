@@ -55,23 +55,28 @@ fun Schedule(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    val query = uiState.searchQuery.trim()
+    val filtered = if (query.isBlank()) uiState.doctors else uiState.doctors.filter { item ->
+        val name = "${item.staff.firstName} ${item.staff.lastName}"
+        name.contains(query, ignoreCase = true) ||
+        item.doctor.specialization.contains(query, ignoreCase = true)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
-            .padding(16.dp)
     ) {
         // Search Bar
         OutlinedTextField(
             value = uiState.searchQuery,
             onValueChange = { viewModel.onSearchQueryChanged(it) },
+            label = { Text("Search Doctor") },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search doctor...") },
             shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = MaterialTheme.colorScheme.outline,
-                focusedContainerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            )
+            leadingIcon = {
+                Icon(painter = painterResource(R.drawable.search), contentDescription = "Search")
+            }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -85,12 +90,12 @@ fun Schedule(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(items = uiState.doctors, key = {it.doctor.id}) { item ->
+                items(items = filtered, key = {it.doctor.doctorID}) { item ->
                     DoctorListCard(
                         item = item,
                         onClick = {
-                            viewModel.selectDoctor(item.doctor.id) // Load details
-                            onDoctorClick(item.doctor.id) // Navigate
+                            viewModel.selectDoctor(item.doctor.doctorID) // Load details
+                            onDoctorClick(item.doctor.doctorID) // Navigate
                         }
                     )
                 }
@@ -162,12 +167,12 @@ fun DoctorListCard(item: DoctorListItem, onClick: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_room), // Use your existing icon
-                        contentDescription = "Room",
+                        contentDescription = "Doctor ID",
                         modifier = Modifier.size(14.dp),
                         tint = Color.Gray
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = doctor.room, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text(text = doctor.doctorID, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
 

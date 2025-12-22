@@ -1,5 +1,6 @@
 package com.example.qlinic.ui.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,13 +9,13 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
@@ -23,30 +24,33 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.qlinic.R
 import com.example.qlinic.data.model.Slot
 import com.example.qlinic.ui.component.DatePickerContent
-import com.example.qlinic.ui.component.DayStyle
 import com.example.qlinic.ui.component.GenderField
 import com.example.qlinic.ui.component.IcField
 import com.example.qlinic.ui.component.IcVisualTransformation
 import com.example.qlinic.ui.component.NameField
 import com.example.qlinic.ui.component.PhoneNumberField
-import com.example.qlinic.ui.component.SimplePageScaffold
+import com.example.qlinic.ui.component.SimpleTopBar
 import com.example.qlinic.ui.theme.darkblue
 import com.example.qlinic.ui.theme.teal
 import com.example.qlinic.ui.theme.white
 import com.example.qlinic.ui.viewmodel.BookApptViewModel
 import com.example.qlinic.utils.formatTime
+import java.util.*
 
 @Composable
 fun BookAppt(
     doctorId: String,
     onUpClick: () -> Unit,
     isStaff: Boolean,
-    viewModel: BookApptViewModel = viewModel()
+    viewModel: BookApptViewModel = viewModel(),
+    modifier: Modifier = Modifier
 ) {
     val selectedDate by viewModel.selectedDate.collectAsState()
     val availableSlots by viewModel.availableSlots.collectAsState()
     val selectedSlot by viewModel.selectedSlot.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val leaveDates by viewModel.leaveDates.collectAsState()
+    val leaveDatesLoaded by viewModel.leaveDatesLoaded.collectAsState()
 
     // States for the popups
     val showSymptomsPopup by viewModel.showSymptomsPopup.collectAsState()
@@ -59,57 +63,92 @@ fun BookAppt(
     val showExistingPatientIcPopup by viewModel.showExistingPatientIcPopup.collectAsState()
     val showNewPatientDetailsPopup by viewModel.showNewPatientDetailsPopup.collectAsState()
 
+    val bookingError by viewModel.bookingError.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(bookingError) {
+        bookingError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            viewModel.clearBookingError() // Clear the error so it doesn't show again
+        }
+    }
+
+    LaunchedEffect(doctorId) {
+        viewModel.loadLeaveDates(doctorId, Date())
+    }
+
     LaunchedEffect(doctorId, selectedDate) {
         viewModel.getDoctorSlots(doctorId, selectedDate)
     }
 
-    SimplePageScaffold(
-        title = "Book Appointment",
-        onUpClick = onUpClick
-    ) {
+    Scaffold(
+        containerColor = Color.White,
+        topBar = {
+            SimpleTopBar(title = "Book Appointment", onUpClick = onUpClick)
+        },
+        bottomBar = {
+            Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Button(
+                    onClick = { viewModel.onBookAppointmentClick(isStaff) },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = teal,
+                        contentColor = white,
+                        disabledContainerColor = teal.copy(alpha = 0.5f)
+                    ),
+                    enabled = selectedSlot != null && !isLoading,
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) {
+                    Text(
+                        text = "Book Appointment",
+                        style = MaterialTheme.typography.displayMedium
+                    )
+                }
+            }
+        }
+    ) { padding ->
         Column(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxSize()
+                .padding(padding)
                 .padding(horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 text = "Select Date",
-                style = MaterialTheme.typography.displayMedium
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
             )
 
-            Spacer(Modifier.padding(8.dp))
+            if (!leaveDatesLoaded) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Loading availability...", style = MaterialTheme.typography.bodySmall)
+                }
+            }
 
             DatePickerContent(
-                onDismiss = { },
                 selectedDate = selectedDate,
-                onDateSelected = { date ->
-                    viewModel.onDateSelected(date)
+                onDateSelected = {
+                    date -> viewModel.onDateSelected(date)
                 },
                 disablePastDates = true,
-                disableFutureDates = false,
-                dateStyleProvider = { date ->
-                    if (date == selectedDate) {
-                        DayStyle(
-                            backgroundColor = darkblue,
-                            textColor = white
-                        )
-                    } else null
+                leaveDates = leaveDates,
+                onMonthChanged = { cal ->
+                    viewModel.loadLeaveDates(doctorId, cal.time)
                 }
             )
 
-            Spacer(Modifier.padding(16.dp))
-
             Text(
                 text = "Select Time Slot",
-                style = MaterialTheme.typography.displayMedium
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
             )
-
-            Spacer(Modifier.padding(8.dp))
 
             if (isLoading) {
                 Box(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
@@ -117,7 +156,7 @@ fun BookAppt(
             } else {
                 if (availableSlots.isNotEmpty()){
                     TimeSlotGrid(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
                         slots = availableSlots,
                         selectedSlot = selectedSlot,
                         onSlotSelected = { slot ->
@@ -126,38 +165,16 @@ fun BookAppt(
                     )
                 } else {
                     Box(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth().height(100.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "No slots available. Please select another date.",
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center
+                            text = "No slots available for this date.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-            }
-
-            val isButtonEnabled = selectedSlot != null && !isLoading
-
-            Button(
-                onClick = { viewModel.onBookAppointmentClick(isStaff) },
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = teal,
-                    contentColor = white,
-                    disabledContainerColor = teal.copy(alpha = 0.5f)
-                ),
-                enabled = isButtonEnabled,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp, horizontal = 8.dp),
-            ){
-                Text(
-                    text = "Book Appointment",
-                    style = MaterialTheme.typography.displayMedium,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
             }
         }
     }
@@ -223,6 +240,7 @@ fun BookAppt(
             successMessage = successMessage,
             onDismiss = {
                 viewModel.dismissSuccessPopup()
+                onUpClick() // Go back home
             }
         )
     }

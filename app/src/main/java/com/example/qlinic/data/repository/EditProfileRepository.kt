@@ -130,11 +130,11 @@ class EditProfileRepository(
         val snapshot = doctorRef.document(doctorId).get().await()
         if (!snapshot.exists()) return null
         return Doctor(
-            id = doctorId,
+            doctorID = doctorId,
             description = snapshot.getString("Description") ?: "",
             specialization = snapshot.getString("Specialization") ?: "",
             yearsOfExp = snapshot.getLong("YearsOfExp")?.toInt() ?: 0,
-            room = snapshot.getString("Room") ?: ""
+            roomID = snapshot.getString("Room") ?: ""
         )
     }
 

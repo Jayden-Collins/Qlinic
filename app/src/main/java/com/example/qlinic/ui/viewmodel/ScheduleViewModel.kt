@@ -53,7 +53,7 @@ class ScheduleViewModel(
         viewModelScope.launch {
             val doctors = repository.getAllDoctors()
             val listItems = doctors.mapNotNull { doctor ->
-                val staff = clinicStaffRepository.getStaffMember(doctor.id)
+                val staff = clinicStaffRepository.getStaffMember(doctor.doctorID)
                 if (staff != null) DoctorListItem(doctor, staff) else null
             }
             _uiState.update { it.copy(isLoading = false, doctors = listItems) }
@@ -66,14 +66,14 @@ class ScheduleViewModel(
 
     // Called when user clicks a card
     fun selectDoctor(doctorId: String) {
-        if (_selectedDoctor.value?.id == doctorId && _selectedStaff.value != null) return
+        if (_selectedDoctor.value?.doctorID == doctorId && _selectedStaff.value != null) return
         
         _isDetailLoading.value = true
         viewModelScope.launch {
             val doctor = repository.getDoctorById(doctorId)
             _selectedDoctor.value = doctor
             if (doctor != null) {
-                _selectedStaff.value = clinicStaffRepository.getStaffMember(doctor.id)
+                _selectedStaff.value = clinicStaffRepository.getStaffMember(doctor.doctorID)
             } else {
                 _selectedStaff.value = null
             }

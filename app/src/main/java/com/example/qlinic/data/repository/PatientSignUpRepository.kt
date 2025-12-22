@@ -1,6 +1,7 @@
 package com.example.qlinic.data.repository
 
 import android.util.Log
+import android.util.Patterns
 import com.example.qlinic.data.model.Patient
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -11,12 +12,20 @@ class PatientSignUpRepository(
     private val collectionName: String = "Patient"
 ) {
 
+    private fun isValidEmail(email: String?): Boolean {
+        return !email.isNullOrBlank() && Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    }
+
     fun signupPatient(
         patient: Patient,
         password: String,
         onSuccess: () -> Unit,
         onFailure: (String) -> Unit
     ) {
+        if (!isValidEmail(patient.email)) {
+            onFailure("Invalid email format")
+            return
+        }
 
         Log.d("SignupDebug", "Starting signup for: ${patient.email}")
 

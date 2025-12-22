@@ -24,5 +24,7 @@ data class AppointmentCardUiState(
     val displayImageUrl: String?,
     val displayStatus: AppointmentStatus,
     val timeString: String,
-    val isActionEnabled: Boolean
+    val isActionEnabled: Boolean,
+    val isAwaitingAction: Boolean = false, // New field
+    val doctorFullName: String = "" // Added field for doctor's full name
 )

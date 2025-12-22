@@ -41,9 +41,9 @@ class FirestoreDoctorRepository : DoctorRepository {
 
                         profiles.add(
                             Doctor(
-                                id = docId,
+                                doctorID = docId,
                                 specialization = specialty,
-                                room = room,
+                                roomID = room,
                                 description = desc,
                                 yearsOfExp = exp
                             )
@@ -60,6 +60,6 @@ class FirestoreDoctorRepository : DoctorRepository {
 
     override suspend fun getDoctorById(id: String): Doctor? {
         // Fetch all and find one (Optimized way would be direct queries)
-        return getAllDoctors().find { it.id == id }
+        return getAllDoctors().find { it.doctorID == id }
     }
 }
