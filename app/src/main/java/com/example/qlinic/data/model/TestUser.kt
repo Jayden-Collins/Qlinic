@@ -30,7 +30,7 @@ object TestUsers {
         UserRole.STAFF,
         "Front_Desk"
     )
-    val current = patient
+    val current = doctor
 
 }
 

@@ -84,18 +84,23 @@ fun HomeScreen(
         HomeScreenContent(
             state = homeUiState,homeViewModel = homeViewModel,
             onTabSelected = { newStatus -> homeViewModel.onTabSelected(newStatus) },
-            onAction = { appointmentId, action ->
-                homeViewModel.onAppointmentAction(appointmentId, action)
-                if (action == "Complete" || action == "NoShow") {
-                    scope.launch {
-                        val message = if (action == "Complete") "Appointment Completed" else "Marked as No Show"
-                        val result = snackbarHostState.showSnackbar(
-                            message = message,
-                            actionLabel = "Undo",
-                            duration = SnackbarDuration.Short // Shows for ~4 seconds
-                        )
-                        if (result == SnackbarResult.ActionPerformed) {
-                            homeViewModel.onAppointmentAction(appointmentId, "Undo")
+            onAction = { id, action ->
+                if (action == "ReBook" || action == "Reschedule") {
+                    onNavigateToSchedule()
+                } else {
+                    homeViewModel.onAppointmentAction(id, action)
+
+                    if (action == "Complete" || action == "NoShow") {
+                        scope.launch {
+                            val message = if (action == "Complete") "Appointment Completed" else "Marked as No Show"
+                            val result = snackbarHostState.showSnackbar(
+                                message = message,
+                                actionLabel = "Undo",
+                                duration = SnackbarDuration.Short
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                homeViewModel.onAppointmentAction(id, "Undo")
+                            }
                         }
                     }
                 }
@@ -355,7 +360,7 @@ fun AppointmentCard(
             if (currentUserRole == UserRole.PATIENT && uiItem.rawAppointment.status == AppointmentStatus.COMPLETED) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
-                    onClick = { onActionClick(uiItem.id, "ReBook") },
+                    onClick = { onActionClick(uiItem.rawAppointment.doctor.id, "ReBook") },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.outline, // Light Grey
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant // Dark Text
