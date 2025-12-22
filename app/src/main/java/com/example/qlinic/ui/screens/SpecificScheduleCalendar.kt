@@ -57,6 +57,7 @@ fun SpecificScheduleCalendar(
 
     LaunchedEffect(doctorID) {
         viewModel.loadDoctorSchedule(doctorID)
+        viewModel.loadAppointmentDetailsByMonth(doctorID, Date())
     }
 
     LaunchedEffect(doctor) {

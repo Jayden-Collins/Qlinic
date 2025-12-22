@@ -354,7 +354,7 @@ private fun CalendarGridUnified(
                         
                         val isPast = epoch < today
                         val isFuture = epoch > today
-                        val isSelectable = (!disablePastDates || !isPast) && (!disableFutureDates || !isFuture)
+                        val isSelectable = (!disablePastDates || !isPast) && (!disableFutureDates || !isFuture) && !isOnLeave && !hasAppointment
 
                         // If style provider gives a style, we use it (e.g. for specific coloring)
                         val customStyle = dateStyleProvider(date)
@@ -394,7 +394,7 @@ private fun Day(
         customStyle != null -> customStyle.backgroundColor
         hasAppointment -> teal.copy(0.8f)
         isOnLeave -> Color.LightGray.copy(0.7f)
-        isToday -> darkblue.copy(0.2f)
+        isToday -> MaterialTheme.colorScheme.primary
         else -> Color.Transparent
     }
 
@@ -406,6 +406,7 @@ private fun Day(
         else -> MaterialTheme.colorScheme.onSurface
     }
 
+    // Show 'Unavailable' label for leave or appointment days
     Box(
         modifier = modifier
             .aspectRatio(1f)

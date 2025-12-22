@@ -385,7 +385,7 @@ fun EditProfileScreen(
                             )
                         }
                         "doctor" -> {
-                            viewModel.updateStaffPartial(
+                            val started = viewModel.updateStaffPartial(
                                 idToUse,
                                 mapOf(
                                     "FirstName" to firstName,
@@ -395,14 +395,16 @@ fun EditProfileScreen(
                                     "isActive" to isActive
                                 )
                             )
-                            viewModel.updateDoctorPartial(
-                                idToUse,
-                                mapOf(
-                                    "Description" to description,
-                                    "Specialization" to specialization,
-                                    "YearsOfExp" to (yearsOfExp.toIntOrNull() ?: 0)
+                            if (started) {
+                                viewModel.updateDoctorPartial(
+                                    idToUse,
+                                    mapOf(
+                                        "Description" to description,
+                                        "Specialization" to specialization,
+                                        "YearsOfExp" to (yearsOfExp.toIntOrNull() ?: 0)
+                                    )
                                 )
-                            )
+                            }
                         }
                         else -> {
                             viewModel.updatePatientPartial(

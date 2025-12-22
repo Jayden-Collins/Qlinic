@@ -129,7 +129,7 @@ fun DoctorListCard(item: DoctorListItem, onClick: () -> Unit) {
                     .build(),
                 loading = {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.size(80.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(

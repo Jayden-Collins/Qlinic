@@ -370,14 +370,14 @@ class BookApptViewModel(private val sessionManager: SessionManager) : ViewModel(
 
                 // Convert java.util.Date to java.time.LocalDate
                 val localDate = selectedDateAsDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
-                val time = LocalTime.parse(slot.SlotStartTime)
+                val time = LocalTime.parse(slot.SlotStartTime.trim())
                 val localDateTime = LocalDateTime.of(localDate, time)
                 val appointmentDateTime = Date.from(localDateTime.atZone(ZoneId.systemDefault()).toInstant())
-                Log.d("BookApptViewModel", "confirmBooking: Appointment date/time: ${appointmentDateTime}")
+                Log.d("BookApptViewModel", "confirmBooking: Appointment date/time: $appointmentDateTime")
 
                 val currentUserId = sessionManager.getSavedUserId() ?: ""
                 val finalPatientId = if (isStaff) _bookingPatientId.value else currentUserId
-                Log.d("BookApptViewModel", "confirmBooking: Final patient ID: ${finalPatientId}")
+                Log.d("BookApptViewModel", "confirmBooking: Final patient ID: $finalPatientId")
 
                 if (finalPatientId.isNullOrEmpty()) {
                     Log.e("BookApptViewModel", "confirmBooking: Patient ID is null or empty.")
@@ -385,9 +385,9 @@ class BookApptViewModel(private val sessionManager: SessionManager) : ViewModel(
                     return@launch
                 }
 
-                Log.d("BookApptViewModel", "confirmBooking: Checking if slot is taken for slotId=\\${slot.SlotID}, appointmentDateTime=\\${appointmentDateTime}")
+                Log.d("BookApptViewModel", "confirmBooking: Checking if slot is taken for slotId=${slot.SlotID}, appointmentDateTime=\\${appointmentDateTime}")
                 val isTaken = appointmentRepository.isSlotTaken(slot.SlotID, appointmentDateTime)
-                Log.d("BookApptViewModel", "confirmBooking: isSlotTaken result: \\${isTaken}")
+                Log.d("BookApptViewModel", "confirmBooking: isSlotTaken result: ${isTaken}")
                 if (isTaken) {
                     Log.w("BookApptViewModel", "confirmBooking: Slot is already taken.")
                     _bookingError.value = "This time slot is no longer available. Please select another time."

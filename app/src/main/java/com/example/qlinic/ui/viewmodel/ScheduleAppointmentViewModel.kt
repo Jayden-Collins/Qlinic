@@ -101,11 +101,13 @@ class ScheduleAppointmentViewModel : ViewModel(){
                 val todayStartCal = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }
                 val filteredDates = dates.filter { d ->
                     val c = Calendar.getInstance().apply { time = d; set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }
-                    !c.time.before(todayStartCal.time)
+                    val isNotPast = !c.time.before(todayStartCal.time)
+                    val isNotOnLeave = !_leaveDates.value.any { isSameDay(it, d) }
+                    isNotPast && isNotOnLeave
                 }
 
                 if (filteredDates.isEmpty()) {
-                    _errorMessage.value = "Cannot mark past dates as leave"
+                    _errorMessage.value = "Cannot mark past or leave dates as leave"
                     return@launch
                 }
                 val success = repository.markDoctorAsLeave(

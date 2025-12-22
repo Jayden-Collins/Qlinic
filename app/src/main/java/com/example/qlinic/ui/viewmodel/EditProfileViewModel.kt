@@ -214,20 +214,20 @@ class EditProfileViewModel(
 
 
     // Staff update
-    fun updateStaffPartial(staffId: String, updatesInput: Map<String, Any>) {
-        val current = _staff.value ?: run { _error.value = "No staff loaded"; return }
+    fun updateStaffPartial(staffId: String, updatesInput: Map<String, Any>): Boolean {
+        val current = _staff.value ?: run { _error.value = "No staff loaded"; return false}
         // --- VALIDATION BEFORE LAUNCH ---
         val firstCandidate = updatesInput["FirstName"] as? String
         val lastCandidate = updatesInput["LastName"] as? String
         if (firstCandidate != null && !namePattern.matches(firstCandidate)) {
             android.util.Log.d("EditProfileViewModel", "Invalid staff first name: $firstCandidate")
             _error.value = "First name must contain only letters and spaces"
-            return
+            return false
         }
         if (lastCandidate != null && !namePattern.matches(lastCandidate)) {
             android.util.Log.d("EditProfileViewModel", "Invalid staff last name: $lastCandidate")
             _error.value = "Last name must contain only letters and spaces"
-            return
+            return false
         }
         // --- END VALIDATION ---
         viewModelScope.launch {
@@ -275,6 +275,7 @@ class EditProfileViewModel(
             } catch (t: Throwable) { _error.value = "Failed to update staff: ${t.message}" }
             finally { _loading.value = false }
         }
+        return true
     }
 
     // Doctor update (doctor-specific fields stored in Doctor collection)
